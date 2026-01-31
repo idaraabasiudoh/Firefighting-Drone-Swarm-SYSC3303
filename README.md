@@ -24,7 +24,7 @@ Objective: Basic communication between subsystems
   - **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
   - **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
   - **SubsystemsTest.java:** Integration tests to verify interaction between scheduler, drones, and fire subsystem.
-  - **TestRunner.java: **Executes all test cases.
+  - **TestRunner.java:** Executes all test cases.
 #### 1.4 Diagrams
   - **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
   - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.

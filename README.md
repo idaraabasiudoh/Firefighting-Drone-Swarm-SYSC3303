@@ -21,15 +21,15 @@ Objective: Basic communication between subsystems
   - **sample_zone_file.csv:** Input file defining zone layouts and coordinates for the GUI map.
 #### 1.3 Tests
   - **DroneResultTest.java:** Tests correctness of drone result data handling.
-  - **FireEventTest.java**: 
-  - SchedulerTest.java
-  - SubsystemsTest.java
-  - TestRunner.java
+  - **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
+  - **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
+  - **SubsystemsTest.java:** Integration tests to verify interaction between scheduler, drones, and fire subsystem.
+  - **TestRunner.java: **Executes all test cases.
 #### 1.4 Diagrams
-  - FDS_UMLClass.png
-  - FDS_Sequence.png
+  - **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
+  - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
 ### 2.0 Responsibilities
-  - Drone & FireIncident Subsystems: Idara-Abasi Udoh
-  - Scheduler: Ohioreuna Ajayi-Isuku
-  - Testing: Divine Eyo
-  - Diagrams & Read-Me: Suveatha Karunakaran
+  - Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
+  - Scheduler: **Ohioreuna Ajayi-Isuku**
+  - Testing: **Divine Eyo**
+  - Diagrams & Read-Me: **Suveatha Karunakaran**

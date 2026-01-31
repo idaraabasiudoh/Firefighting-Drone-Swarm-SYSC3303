@@ -6,4 +6,16 @@ Objective: Basic communication between subsystems
 
 ### 1.0 File Names
 #### 1.1 Main System
-    https://github.com/idaraabasiudoh/Firefighting-Drone-Swarm-SYSC3303/blob/master/src/DroneResult.java
+  - DroneResult.java
+  - DroneSubsystem.java
+  - FireEvent.java
+  - FireIncidentSubsystem.java
+  - Main.java
+  - Scheduler.java
+  - fire_events.csv
+#### 1.2 GUI
+  - GUIMain.java
+  - MapPanel.java
+  - Zone.java
+  - ZoneParser.java
+  - sample_zone_file.csv

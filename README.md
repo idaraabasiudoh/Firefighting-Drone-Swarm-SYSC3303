@@ -19,6 +19,12 @@ Objective: Basic communication between subsystems
   - Zone.java
   - ZoneParser.java
   - sample_zone_file.csv
-#### 1.3 Diagrams
+#### 1.3 Tests
+  - DroneResultTest.java
+  - FireEventTest.java
+  - SchedulerTest.java
+  - SubsystemsTest.java
+  - TestRunner.java
+#### 1.4 Diagrams
   - FDS_UMLClass.png
   - FDS_Sequence.png

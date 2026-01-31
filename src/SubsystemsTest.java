@@ -3,7 +3,6 @@ public class SubsystemsTest {
     public void testEndToEndSingleFireEventFlow_NoHang() throws InterruptedException {
         Scheduler scheduler = new Scheduler();
 
-        // Start one drone with enough agent so we avoid "capacity < needed" edge cases here.
         DroneSubsystem drone = new DroneSubsystem(1, scheduler, 50.0);
         Thread droneThread = new Thread(drone, "Drone-1");
         droneThread.start();
@@ -15,35 +14,42 @@ public class SubsystemsTest {
                 FireEvent.Severity.HIGH
         );
 
-        // Receive confirmation in a separate thread so the test never blocks indefinitely.
+        // Mutable holder (needed because lambdas can’t modify local variables directly)
         final DroneResult[] received = new DroneResult[1];
+
         Thread receiver = new Thread(() -> received[0] = scheduler.waitForConfirmation(), "Result-Receiver");
         receiver.start();
 
-        // Submit the event (should trigger the drone to pick it up and produce a result)
         scheduler.submitFireEvent(fire);
 
-        // Wait (with timeout) for the result to arrive
-        receiver.join(2000);
+        // Give enough time for the drone’s simulated sleeps (travel + drop). Adjust if your drone sleeps longer.
+        receiver.join(6000);
 
-        // Shutdown cleanly (also ensures the drone unblocks if it's waiting)
+        // If still waiting, shut down and fail with a clear error
+        if (receiver.isAlive()) {
+            drone.shutdown();
+            scheduler.shutdown();
+
+            receiver.join(1000);
+            droneThread.join(2000);
+
+            throw new AssertionError("Timed out waiting for DroneResult. " +
+                    "Either DroneSubsystem sleeps longer than 6s, or the drone never submitted a result.");
+        }
+
+        // Now safe to shutdown cleanly
         drone.shutdown();
         scheduler.shutdown();
-
-        // Make sure threads exit
         droneThread.join(2000);
 
         // Assertions
-        TestRunner.assertTrue(!receiver.isAlive(), "Result receiver thread should have finished (no indefinite wait)");
-        System.out.println(received[0]);
-//        TestRunner.assertTrue(received[0] != null, "Expected a DroneResult confirmation but got null");
+        TestRunner.assertTrue(received[0] != null, "Expected a DroneResult confirmation but got null");
 
         TestRunner.assertEquals(1, received[0].getDroneId(), "Drone ID mismatch");
         TestRunner.assertEquals(3, received[0].getZoneId(), "Zone ID mismatch");
         TestRunner.assertEquals(true, received[0].isTaskCompleted(), "Task should be marked completed");
-
-        // HIGH severity = 30L, capacity started at 50L -> remaining 20.0
-        TestRunner.assertEquals(20.0, received[0].getRemainingAgent(), "Remaining agent should be 20.0 after dropping 30L");
+        TestRunner.assertEquals(20.0, received[0].getRemainingAgent(),
+                "Remaining agent should be 20.0 after dropping 30L");
     }
 
     public void testNoResultIfShutdownBeforeWork_NoHang() throws InterruptedException {

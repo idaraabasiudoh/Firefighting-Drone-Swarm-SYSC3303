@@ -3,7 +3,7 @@
 ## Iteration 1
 
 **Objective:** Basic communication between subsystems
-/n**Java Version:** JAVA21 (at least), JAVA25 at most
+**Java Version:** JAVA21 (at least), JAVA25 at most
 
 ### 1.0 File Names
 #### 1.1 Main System
@@ -33,9 +33,9 @@
 #### 2.1 Main System
     RUN THE "Main.java" class
 #### 2.2 GUI
-  RUN THE "GUIMain.java" class (Just the view)
+    RUN THE "GUIMain.java" class (Just the view)
 #### 2.3 Test
-  RUN THE "TestRunner.java" class 
+    RUN THE "TestRunner.java" class 
 ### 3.0 Responsibilities
   - Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
   - Scheduler: **Ohioreuna Ajayi-Isuku**

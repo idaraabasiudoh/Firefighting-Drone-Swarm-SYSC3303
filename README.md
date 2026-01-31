@@ -29,7 +29,8 @@
   - **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
   - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
 ### 2.0 Set-Up Instructions
-**Java Version:** JAVA21 (at least), JAVA25 at most
+- **Java Version:** JAVA21 (at least), JAVA25 at most
+- Download repository
 #### 2.1 Main System
     RUN THE "Main.java" class
 #### 2.2 GUI

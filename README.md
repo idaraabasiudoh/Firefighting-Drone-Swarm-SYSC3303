@@ -2,4 +2,4 @@
 
 ## Iteration 1
 
-- Basic communication between subsystems
+Objective: Basic communication between subsystems

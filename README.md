@@ -28,3 +28,8 @@ Objective: Basic communication between subsystems
 #### 1.4 Diagrams
   - FDS_UMLClass.png
   - FDS_Sequence.png
+### 2.0 Responsibilities
+  - Drone & FireIncident Subsystems: Idara-Abasi Udoh
+  - Scheduler: Ohioreuna Ajayi-Isuku
+  - Testing: Divine Eyo
+  - Diagrams & Read-Me: Suveatha Karunakaran

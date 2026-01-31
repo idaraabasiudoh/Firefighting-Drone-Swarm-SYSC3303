@@ -1,8 +1,6 @@
+import java.util.Objects;
+
 public class FireEvent {
-    private String time;
-    private int zoneId;
-    private EventType eventType;
-    private Severity severity;
 
     public enum EventType {
         FIRE_DETECTED,
@@ -10,20 +8,15 @@ public class FireEvent {
     }
 
     public enum Severity {
-        LOW(10),
-        MODERATE(20),
-        HIGH(30);
-
-        private final int litersNeeded;
-
-        Severity(int litersNeeded) {
-            this.litersNeeded = litersNeeded;
-        }
-
-        public int getLitersNeeded() {
-            return litersNeeded;
-        }
+        LOW,
+        MODERATE,
+        HIGH
     }
+
+    private String time;          // hh:mm:ss.mmm (Iteration 1: keep as String)
+    private int zoneId;
+    private EventType eventType;
+    private Severity severity;
 
     public FireEvent(String time, int zoneId, EventType eventType, Severity severity) {
         this.time = time;
@@ -31,6 +24,8 @@ public class FireEvent {
         this.eventType = eventType;
         this.severity = severity;
     }
+
+    // -------- Getters --------
 
     public String getTime() {
         return time;
@@ -48,9 +43,7 @@ public class FireEvent {
         return severity;
     }
 
-    public int getLitersNeeded() {
-        return severity.getLitersNeeded();
-    }
+    // -------- Setters --------
 
     public void setTime(String time) {
         this.time = time;
@@ -68,9 +61,47 @@ public class FireEvent {
         this.severity = severity;
     }
 
+    // -------- Domain Logic --------
+
+    public int getLitersNeeded() {
+        switch (severity) {
+            case LOW:
+                return 10;
+            case MODERATE:
+                return 20;
+            case HIGH:
+                return 30;
+            default:
+                return 0;
+        }
+    }
+
+    // -------- Object Overrides --------
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof FireEvent)) return false;
+        FireEvent other = (FireEvent) o;
+        return zoneId == other.zoneId
+                && Objects.equals(time, other.time)
+                && eventType == other.eventType
+                && severity == other.severity;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(time, zoneId, eventType, severity);
+    }
+
     @Override
     public String toString() {
-        return String.format("FireEvent[Time=%s, Zone=%d, Type=%s, Severity=%s, Liters=%d]",
-                time, zoneId, eventType, severity, severity.getLitersNeeded());
+        return "FireEvent{" +
+                "time='" + time + '\'' +
+                ", zoneId=" + zoneId +
+                ", eventType=" + eventType +
+                ", severity=" + severity +
+                ", litersNeeded=" + getLitersNeeded() +
+                '}';
     }
 }

@@ -29,7 +29,8 @@ Objective: Basic communication between subsystems
   - **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
   - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
 ### 2.0 Set-Up Instructions
-
+#### 2.1 Main System
+#### 2.2 GUI
 ### 3.0 Responsibilities
   - Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
   - Scheduler: **Ohioreuna Ajayi-Isuku**

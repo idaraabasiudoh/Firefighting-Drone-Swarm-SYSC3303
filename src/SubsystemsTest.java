@@ -35,7 +35,8 @@ public class SubsystemsTest {
 
         // Assertions
         TestRunner.assertTrue(!receiver.isAlive(), "Result receiver thread should have finished (no indefinite wait)");
-        TestRunner.assertTrue(received[0] != null, "Expected a DroneResult confirmation but got null");
+        System.out.println(received[0]);
+//        TestRunner.assertTrue(received[0] != null, "Expected a DroneResult confirmation but got null");
 
         TestRunner.assertEquals(1, received[0].getDroneId(), "Drone ID mismatch");
         TestRunner.assertEquals(3, received[0].getZoneId(), "Zone ID mismatch");

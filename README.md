@@ -2,7 +2,8 @@
 
 ## Iteration 1
 
-Objective: Basic communication between subsystems
+**Objective:** Basic communication between subsystems
+**Java Version:** JAVA21 (at least), JAVA25 at most
 
 ### 1.0 File Names
 #### 1.1 Main System
@@ -30,7 +31,11 @@ Objective: Basic communication between subsystems
   - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
 ### 2.0 Set-Up Instructions
 #### 2.1 Main System
+    RUN THE "Main.java" class
 #### 2.2 GUI
+  RUN THE "GUIMain.java" class (Just the view)
+#### 2.3 Test
+  RUN THE "TestRunner.java" class 
 ### 3.0 Responsibilities
   - Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
   - Scheduler: **Ohioreuna Ajayi-Isuku**

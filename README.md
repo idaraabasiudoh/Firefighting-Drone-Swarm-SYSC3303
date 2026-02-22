@@ -49,3 +49,12 @@
 ### 1.0 File Names
 Same as Iteration1
 
+### 2.0 Set-Up Instructions
+Same as Iteration 1
+
+### 3.0 Responsibilities
+  - Implementation & Readme: **Ohioreuna Ajayi-Isuku**
+  - Testing: **Divine Eyo**
+  - Diagrams:**Idara-Abasi Udoh**
+  - Testing & Readme: **Suveatha Karunakaran**
+

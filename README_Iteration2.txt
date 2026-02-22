@@ -117,3 +117,9 @@ logic
 Iteration 2 successfully introduces scheduling logic, drone state
 management, and GUI tracking. The system is now prepared for multi-drone
 expansion in Iteration 3.
+
+Responsibilities
+Drone & Fire Incident Subsystems: Ohioreuna Ajayi-Isuku
+Scheduler: Ohioreuna Ajayi-Isuku
+Testing: Divine Eyo and Suveatha Karunakaran
+Diagrams and README: Idara-Abasi Udoh and Divine Eyo

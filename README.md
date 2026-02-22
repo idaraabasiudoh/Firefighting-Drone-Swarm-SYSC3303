@@ -42,3 +42,10 @@
   - Scheduler: **Ohioreuna Ajayi-Isuku**
   - Testing: **Divine Eyo**
   - Diagrams & Read-Me: **Suveatha Karunakaran**
+
+## Iteration 2
+**Objective:** This project simulates a firefighting drone system composed of: -Scheduler - Fire Incident Subsystem - Drone Subsystem - GUI Visualization. Iteration 2 introduces core scheduling logic, drone state transitions, and GUI updates to track drone states and active fire incidents.
+
+### 1.0 File Names
+
+

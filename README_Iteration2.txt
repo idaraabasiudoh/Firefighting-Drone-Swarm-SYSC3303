@@ -45,26 +45,42 @@ recharge at base are assumed instantaneous.
 ============================================================ File
 Structure ============================================================
 
-Core Simulation: - Main.java - Scheduler.java - DroneSubsystem.java -
-DroneCommand.java - DroneState.java - DroneResult.java -
-FireIncidentSubsystem.java - FireEvent.java
+1.1 Main System
 
-GUI: - GuiMain.java - MapPanel.java - GuiModel.java - Zone.java -
-ZoneParser.java
+DroneCommand.java: Command object used by the scheduler to send instructions to drones (task assignment, return to base, or shutdown).
+DroneResult.java: Stores the outcome of a drone’s task execution (if the task is completed).
+DroneState.java: Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
+DroneSubsystem.java: Represents a drone worker thread. Requests tasks from the scheduler and processes assigned fire events.
+FireEvent.java: Object representing a single fire incident, including attributes such as zone, severity, and time.
+FireIncidentSubsystem.java: Reads fire incidents from the input file and submits them to the scheduler.
+Main.java: Entry point of the program. Initializes the scheduler and subsystems, then starts the simulation.
+Scheduler.java: Manages shared task queues and synchronizes communication between fire events and drones.
+fire_events.csv: Input file containing a list of fire incidents used to drive the simulation.
 
-Test Files: - src/fire_events.csv - src/sample_zone_file.csv
+1.2 GUI
+GuiMain.java: Launches the graphical interface and initializes GUI components.
+GuiModel.java: Thread-safe shared model that the scheduler updates and the GUI reads to track drone states and active fire zones.
+MapPanel.java: Displays the map and visual representation of zones, fires, and drone activity.
+Zone.java: Represents a geographical zone on the map, including its boundaries and identifiers.
+ZoneParser.java: Reads and parses zone data from a CSV file into Zone objects.
+sample_zone_file.csv: Input file defining zone layouts and coordinates for the GUI map.
+
+1.3 Tests
+DroneSubsystemTest.java: Tests drone subsystem behavior and state transitions.
+FireEventTest.java: Ensures fire event objects are created and interpreted correctly.
+SchedulerTest.java: Tests task coordination, queue handling, and synchronization logic.
 
 ============================================================ How to Run
 ============================================================
 
-Run Full System (Simulation + GUI): Run Main.java
+Java Version:
+Minimum: Java 21
+Maximum: Java 25
 
-Default configuration: - Input file: src/fire_events.csv - Number of
-drones: 1
-
-Optional: java Main
-
-Run GUI Only: Run GuiMain.java
+Download the repository before running the system.
+Main System:Run the Main.java class.
+GUI:Run the GuiMain.java class (GUI view only).
+Tests: Run the test files located in the "Test/" directory.
 
 ============================================================ Scheduling
 Policy (Iteration 2)
@@ -101,3 +117,9 @@ logic
 Iteration 2 successfully introduces scheduling logic, drone state
 management, and GUI tracking. The system is now prepared for multi-drone
 expansion in Iteration 3.
+
+Responsibilities
+Drone & Fire Incident Subsystems: Ohioreuna Ajayi-Isuku
+Scheduler: Ohioreuna Ajayi-Isuku
+Testing: Divine Eyo and Suveatha Karunakaran
+Diagrams and README: Idara-Abasi Udoh and Divine Eyo

@@ -1,0 +1,329 @@
+@startuml Iteration3_UML_Class_Diagram
+title Firefighting Drone Swarm - Iteration 3 UML Class Diagram
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ==================== ENUMS ====================
+enum DroneState {
+    IDLE
+    EN_ROUTE
+    DROPPING_AGENT
+    RETURNING_BASE
+    SHUTDOWN
+}
+
+enum "FireEvent.EventType" as EventType {
+    FIRE_DETECTED
+    DRONE_REQUEST
+}
+
+enum "FireEvent.Severity" as Severity {
+    LOW
+    MODERATE
+    HIGH
+}
+
+enum "DroneCommand.Type" as CommandType {
+    TASK
+    RETURN_BASE
+    SHUTDOWN
+}
+
+' ==================== DATA CLASSES ====================
+class FireEvent {
+    - time : String
+    - zoneId : int
+    - eventType : EventType
+    - severity : Severity
+    + FireEvent(time, zoneId, eventType, severity)
+    + getTime() : String
+    + getZoneId() : int
+    + getEventType() : EventType
+    + getSeverity() : Severity
+    + getLitersNeeded() : int
+    + equals(Object) : boolean
+    + hashCode() : int
+    + toString() : String
+}
+
+class DroneResult {
+    - droneId : int
+    - zoneId : int
+    - taskCompleted : boolean
+    - remainingAgent : double
+    + DroneResult(droneId, zoneId, taskCompleted, remainingAgent)
+    + getDroneId() : int
+    + getZoneId() : int
+    + isTaskCompleted() : boolean
+    + getRemainingAgent() : double
+    + toString() : String
+}
+
+class DroneInfo {
+    - droneId : int
+    - state : DroneState
+    - currentX : int
+    - currentY : int
+    - remainingAgent : double
+    - agentCapacity : double
+    - assignedZoneId : int
+    - assignedSeverity : String
+    - tasksCompleted : int
+    - listenPort : int
+    + DroneInfo(droneId, agentCapacity, x, y, listenPort)
+    + getDroneId() : int
+    + getState() : DroneState
+    + getRemainingAgent() : double
+    + getAssignedZoneId() : int
+    + getTasksCompleted() : int
+    + isIdle() : boolean
+    + hasEnoughAgent(litersNeeded) : boolean
+    + clearAssignment() : void
+    + refill() : void
+}
+
+class Zone {
+    - id : int
+    - x1 : int
+    - y1 : int
+    - x2 : int
+    - y2 : int
+    + Zone(id, x1, y1, x2, y2)
+    + getId() : int
+    + centerX() : int
+    + centerY() : int
+}
+
+record DroneCommand {
+    + type : Type
+    + task : FireEvent
+    + {static} task(FireEvent) : DroneCommand
+    + {static} returnBase() : DroneCommand
+    + {static} shutdown() : DroneCommand
+}
+
+' ==================== SUBSYSTEMS ====================
+class Scheduler implements Runnable {
+    - pendingEvents : Queue<FireEvent>
+    - droneRegistry : Map<Integer, DroneInfo>
+    - droneAddresses : Map<Integer, InetAddress>
+    - zones : List<Zone>
+    - fireListenSocket : DatagramSocket
+    - droneListenSocket : DatagramSocket
+    - sendSocket : DatagramSocket
+    - fireSubsystemAddress : InetAddress
+    - running : boolean
+    + Scheduler(zones : List<Zone>)
+    + run() : void
+    - listenForFireEvents() : void
+    - listenForDroneMessages() : void
+    - dispatchLoop() : void
+    - findBestDrone(event : FireEvent) : DroneInfo
+    - dispatchToDrone(drone : DroneInfo, event : FireEvent) : void
+    - handleDroneResult(result : DroneResult) : void
+    - sendReturnBase(drone : DroneInfo) : void
+    - sendConfirmationToFire(droneId, zoneId, completed) : void
+    + shutdown() : void
+    + getDroneRegistry() : Map<Integer, DroneInfo>
+    + getPendingEvents() : Queue<FireEvent>
+}
+
+class DroneSubsystem implements Runnable {
+    - droneId : int
+    - schedulerAddress : InetAddress
+    - schedulerPort : int
+    - agentCapacity : double
+    - currentAgent : double
+    - running : boolean
+    - state : DroneState
+    - currentX : int
+    - currentY : int
+    - redirectZoneId : int
+    - redirectSeverity : String
+    - commandSocket : DatagramSocket
+    - sendSocket : DatagramSocket
+    + DroneSubsystem(droneId, schedulerAddress, agentCapacity)
+    + DroneSubsystem(droneId, schedulerAddress)
+    + run() : void
+    - registerWithScheduler() : void
+    - sendStatusToScheduler() : void
+    - sendResultToScheduler(zoneId, completed) : void
+    - handleTask(msg : String) : void
+    - travelWithRedirectPolling(totalMs : int) : void
+    - handleRedirect(msg : String) : void
+    - doReturnToBase() : void
+    + {static} litersForSeverity(severity : String) : int
+    + shutdown() : void
+    + getDroneId() : int
+    + getState() : DroneState
+    + getCurrentAgent() : double
+}
+
+class FireIncidentSubsystem implements Runnable {
+    - inputFilePath : String
+    - schedulerAddress : InetAddress
+    - sendSocket : DatagramSocket
+    - receiveSocket : DatagramSocket
+    - running : boolean
+    - eventCount : int
+    + FireIncidentSubsystem(inputFilePath, schedulerAddress)
+    + run() : void
+    - readAndProcessInputFile() : void
+    - waitForConfirmations() : void
+    + {static} parseLineToFireEvent(line : String) : FireEvent
+    + shutdown() : void
+}
+
+' ==================== UDP HELPER ====================
+class UDPHelper <<utility>> {
+    + {static} FIRE_TO_SCHEDULER_PORT : int = 5000
+    + {static} SCHEDULER_TO_FIRE_PORT : int = 5001
+    + {static} DRONE_TO_SCHEDULER_PORT : int = 5002
+    + {static} SCHEDULER_TO_DRONE_BASE_PORT : int = 6000
+    + {static} BUFFER_SIZE : int = 1024
+    + {static} MSG_FIRE_EVENT : String
+    + {static} MSG_DRONE_REGISTER : String
+    + {static} MSG_DRONE_STATUS : String
+    + {static} MSG_DRONE_COMMAND : String
+    + {static} MSG_DRONE_RESULT : String
+    + {static} MSG_CONFIRMATION : String
+    + {static} MSG_SHUTDOWN : String
+    + {static} sendMessage(socket, address, port, message) : void
+    + {static} receiveMessage(socket) : String
+    + {static} receivePacket(socket) : DatagramPacket
+    + {static} extractMessage(packet) : String
+    + {static} buildFireEventMessage(...) : String
+    + {static} buildDroneRegisterMessage(...) : String
+    + {static} buildDroneStatusMessage(...) : String
+    + {static} buildDroneCommandMessage(...) : String
+    + {static} buildDroneResultMessage(...) : String
+    + {static} buildConfirmationMessage(...) : String
+    + {static} parseFireEvent(msg) : FireEvent
+    + {static} parseDroneResult(msg) : DroneResult
+    + {static} getDroneListenPort(droneId) : int
+}
+
+' ==================== GUI ====================
+class GuiModel <<singleton>> {
+    - {static} INSTANCE : GuiModel
+    - droneStates : Map<Integer, DroneState>
+    - droneAssignments : Map<Integer, Integer>
+    - activeFireZones : Map<Integer, Severity>
+    - GuiModel()
+    + {static} get() : GuiModel
+    + setDroneState(droneId, state) : void
+    + getDroneState(droneId) : DroneState
+    + snapshotDroneStates() : Map<Integer, DroneState>
+    + setDroneAssignment(droneId, zoneId) : void
+    + snapshotDroneAssignments() : Map<Integer, Integer>
+    + addActiveFire(zoneId, severity) : void
+    + removeActiveFire(zoneId) : void
+    + snapshotActiveFireZones() : Map<Integer, Severity>
+}
+
+class MapPanel extends JPanel {
+    - zones : List<Zone>
+    - refreshTimer : Timer
+    + MapPanel(zones : List<Zone>)
+    # paintComponent(g : Graphics) : void
+    - drawZones(g2 : Graphics2D) : void
+    - drawDrones(g2 : Graphics2D) : void
+    - drawLegend(g2 : Graphics2D) : void
+}
+
+class ZoneParser <<utility>> {
+    + {static} loadZones(filePath : String) : List<Zone>
+}
+
+' ==================== MAIN CLASSES ====================
+class Main {
+    + {static} main(args : String[]) : void
+    - {static} resolvePath(filename : String) : String
+}
+
+class SchedulerMain {
+    + {static} main(args : String[]) : void
+    - {static} resolvePath(filename : String) : String
+}
+
+class DroneMain {
+    + {static} main(args : String[]) : void
+}
+
+class FireIncidentMain {
+    + {static} main(args : String[]) : void
+    - {static} resolvePath(filename : String) : String
+}
+
+class GuiMain {
+    + {static} main(args : String[]) : void
+    - {static} resolvePath(filename : String) : String
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' Enums used by classes
+FireEvent *-- EventType
+FireEvent *-- Severity
+DroneCommand *-- CommandType
+DroneCommand o-- FireEvent : task
+DroneInfo --> DroneState : state
+DroneSubsystem --> DroneState : state
+
+' Scheduler relationships
+Scheduler "1" *-- "0..*" DroneInfo : droneRegistry
+Scheduler "1" *-- "0..*" FireEvent : pendingEvents
+Scheduler "1" o-- "1..*" Zone : zones
+Scheduler ..> UDPHelper : <<uses>>
+Scheduler ..> GuiModel : <<updates>>
+Scheduler ..> DroneResult : <<receives>>
+
+' DroneSubsystem relationships
+DroneSubsystem ..> UDPHelper : <<uses>>
+DroneSubsystem ..> DroneResult : <<creates>>
+
+' FireIncidentSubsystem relationships
+FireIncidentSubsystem ..> UDPHelper : <<uses>>
+FireIncidentSubsystem ..> FireEvent : <<creates>>
+
+' GUI relationships
+MapPanel o-- Zone : zones
+MapPanel ..> GuiModel : <<reads>>
+GuiModel --> DroneState : droneStates
+GuiModel --> Severity : activeFireZones
+ZoneParser ..> Zone : <<creates>>
+
+' Main class relationships
+Main ..> Scheduler : <<creates>>
+Main ..> DroneSubsystem : <<creates>>
+Main ..> FireIncidentSubsystem : <<creates>>
+SchedulerMain ..> Scheduler : <<creates>>
+SchedulerMain ..> ZoneParser : <<uses>>
+DroneMain ..> DroneSubsystem : <<creates>>
+FireIncidentMain ..> FireIncidentSubsystem : <<creates>>
+GuiMain ..> MapPanel : <<creates>>
+GuiMain ..> ZoneParser : <<uses>>
+
+' UDP Communication (notes)
+note right of Scheduler
+  **UDP Communication:**
+  - Listens on port 5000 (fire events)
+  - Listens on port 5002 (drone messages)
+  - Sends to port 5001 (confirmations)
+  - Sends to port 6000+droneId (commands)
+end note
+
+note right of DroneSubsystem
+  **UDP Communication:**
+  - Listens on port 6000+droneId
+  - Sends to port 5002 (scheduler)
+  - Polls for REDIRECT during travel
+end note
+
+note right of FireIncidentSubsystem
+  **UDP Communication:**
+  - Sends to port 5000 (fire events)
+  - Listens on port 5001 (confirmations)
+end note
+
+@enduml

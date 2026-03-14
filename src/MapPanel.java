@@ -1,65 +1,170 @@
-// MapPanel.java  (UPDATED: show drone state + active fires count; draw fires from GuiModel)
-// REPLACE your MapPanel with this version
+// MapPanel.java  (Iteration 3: multi-drone display, severity color-coding, drone assignments)
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class MapPanel extends JPanel {
     private final List<Zone> zones;
     private final int scale = 2;
 
+    // Colors for severity
+    private static final Color COLOR_LOW = new Color(76, 175, 80);        // green
+    private static final Color COLOR_MODERATE = new Color(255, 152, 0);    // orange
+    private static final Color COLOR_HIGH = new Color(244, 67, 54);        // red
+
+    // Colors for drones
+    private static final Color[] DRONE_COLORS = {
+        new Color(33, 150, 243),   // blue
+        new Color(156, 39, 176),   // purple
+        new Color(0, 150, 136),    // teal
+        new Color(255, 87, 34),    // deep orange
+    };
+
     public MapPanel(List<Zone> zones) {
         this.zones = zones;
-        setPreferredSize(new Dimension(900, 700));
+        setPreferredSize(new Dimension(900, 750));
         setDoubleBuffered(true);
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // UI header
+        // Snapshots from GuiModel
+        Map<Integer, DroneState> droneStates = GuiModel.get().snapshotDroneStates();
+        Map<Integer, Integer> droneAssignments = GuiModel.get().snapshotDroneAssignments();
+        Map<Integer, FireEvent.Severity> activeFires = GuiModel.get().snapshotActiveFireZones();
+
+        // ---- UI header: drone statuses ----
+        int headerY = 20;
         g.setColor(Color.BLACK);
-        g.drawString("Drone State: " + GuiModel.get().getDroneState(), 20, 20);
-        g.drawString("Active Fires: " + GuiModel.get().getActiveFireCount(), 20, 40);
+        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.drawString("Firefighting Drone Swarm - Iteration 3", 20, headerY);
+        headerY += 20;
 
-        // background grid (optional)
+        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.drawString("Active Fires: " + activeFires.size(), 20, headerY);
+        headerY += 18;
+
+        if (droneStates.isEmpty()) {
+            g.drawString("No drones registered.", 20, headerY);
+        } else {
+            for (Map.Entry<Integer, DroneState> entry : droneStates.entrySet()) {
+                int droneId = entry.getKey();
+                DroneState state = entry.getValue();
+                Integer assignedZone = droneAssignments.get(droneId);
+                Color droneColor = getDroneColor(droneId);
+
+                g.setColor(droneColor);
+                String label = "Drone " + droneId + ": " + state;
+                if (assignedZone != null) {
+                    label += " -> Zone " + assignedZone;
+                    FireEvent.Severity sev = activeFires.get(assignedZone);
+                    if (sev != null) label += " (" + sev + ")";
+                }
+                g.drawString(label, 20, headerY);
+                headerY += 16;
+            }
+        }
+
+        // ---- background grid ----
         g.setColor(new Color(230, 230, 230));
-        for (int x = 0; x < getWidth(); x += 25) g.drawLine(x, 0, x, getHeight());
-        for (int y = 0; y < getHeight(); y += 25) g.drawLine(0, y, getWidth(), y);
+        int offsetY = 120; // shift map down below header
+        for (int x = 0; x < getWidth(); x += 25) g.drawLine(x, offsetY, x, getHeight());
+        for (int y = offsetY; y < getHeight(); y += 25) g.drawLine(0, y, getWidth(), y);
 
-        // draw zones
-        g.setColor(Color.BLACK);
+        // ---- draw zones ----
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         for (Zone z : zones) {
             int x = Math.min(z.getX1(), z.getX2()) / scale;
-            int y = Math.min(z.getY1(), z.getY2()) / scale;
+            int y = Math.min(z.getY1(), z.getY2()) / scale + offsetY;
             int w = Math.abs(z.getX2() - z.getX1()) / scale;
             int h = Math.abs(z.getY2() - z.getY1()) / scale;
 
+            g.setColor(Color.BLACK);
             g.drawRect(x, y, w, h);
             g.drawString("Z(" + z.getId() + ")", x + 5, y + 15);
 
-            // center dot (debug)
+            // center dot
             int cx = z.centerX() / scale;
-            int cy = z.centerY() / scale;
+            int cy = z.centerY() / scale + offsetY;
             g.fillOval(cx - 2, cy - 2, 4, 4);
         }
 
-        // draw active fires at zone centers
-        Set<Integer> activeZones = GuiModel.get().snapshotActiveFireZones();
-        for (Integer zoneId : activeZones) {
-            Zone z = zones.stream().filter(zz -> zz.getId() == zoneId).findFirst().orElse(null);
+        // ---- draw active fires with severity color ----
+        for (Map.Entry<Integer, FireEvent.Severity> entry : activeFires.entrySet()) {
+            int zoneId = entry.getKey();
+            FireEvent.Severity severity = entry.getValue();
+            Zone z = findZone(zoneId);
             if (z == null) continue;
 
             int cx = z.centerX() / scale;
-            int cy = z.centerY() / scale;
+            int cy = z.centerY() / scale + offsetY;
 
-            g.setColor(Color.ORANGE);
-            g.fillOval(cx - 10, cy - 10, 20, 20);
-            g.setColor(Color.RED);
-            g.drawOval(cx - 10, cy - 10, 20, 20);
+            Color fireColor = getSeverityColor(severity);
+            g2.setColor(new Color(fireColor.getRed(), fireColor.getGreen(), fireColor.getBlue(), 120));
+            g2.fillOval(cx - 14, cy - 14, 28, 28);
+            g2.setColor(fireColor);
+            g2.setStroke(new BasicStroke(2));
+            g2.drawOval(cx - 14, cy - 14, 28, 28);
+            g2.setStroke(new BasicStroke(1));
+
+            // Severity label
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            String sevLabel = severity.name().substring(0, 1);
+            g.drawString(sevLabel, cx - 3, cy + 4);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         }
+
+        // ---- draw drone assignment lines ----
+        for (Map.Entry<Integer, Integer> entry : droneAssignments.entrySet()) {
+            int droneId = entry.getKey();
+            int zoneId = entry.getValue();
+            Zone z = findZone(zoneId);
+            if (z == null) continue;
+
+            int cx = z.centerX() / scale;
+            int cy = z.centerY() / scale + offsetY;
+
+            Color droneColor = getDroneColor(droneId);
+            g2.setColor(droneColor);
+            g2.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                    1.0f, new float[]{6, 4}, 0));
+
+            // Draw dashed line from base (0,0) to zone center
+            g2.drawLine(0, offsetY, cx, cy);
+            g2.setStroke(new BasicStroke(1));
+
+            // Drone marker at zone center
+            g2.setColor(droneColor);
+            g2.fillRect(cx - 6, cy - 6, 12, 12);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 9));
+            g.drawString("D" + droneId, cx - 5, cy + 4);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        }
+    }
+
+    private Zone findZone(int zoneId) {
+        return zones.stream().filter(z -> z.getId() == zoneId).findFirst().orElse(null);
+    }
+
+    private static Color getSeverityColor(FireEvent.Severity severity) {
+        if (severity == null) return COLOR_MODERATE;
+        switch (severity) {
+            case LOW: return COLOR_LOW;
+            case MODERATE: return COLOR_MODERATE;
+            case HIGH: return COLOR_HIGH;
+            default: return COLOR_MODERATE;
+        }
+    }
+
+    private static Color getDroneColor(int droneId) {
+        return DRONE_COLORS[(droneId - 1) % DRONE_COLORS.length];
     }
 
     // Call this from a Swing timer to keep GUI refreshed

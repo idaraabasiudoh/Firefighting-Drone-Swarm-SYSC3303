@@ -1,56 +1,97 @@
-
-// If you want ONE run button for everything, use this Main.
-// Otherwise you can keep separate GuiMain and Main.
-//
+// Main.java  (Iteration 3: convenience launcher — starts all 3 subsystems in one JVM via UDP)
+// For production, run SchedulerMain, DroneMain, and FireIncidentMain as separate processes.
 
 import javax.swing.*;
+import java.io.File;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Firefighting Drone Swarm System - Iteration 2 (Single Drone)");
+        System.out.println("Firefighting Drone Swarm System - Iteration 3 (Multi-Drone, UDP)");
 
-        String inputFile = "src/fire_events.csv";
-        int numberOfDrones = 1;
+        String inputFile = resolvePath("fire_events.csv");
+        String zoneFile = resolvePath("sample_zone_file.csv");
+        int numberOfDrones = 2; // default 2 drones
 
         if (args.length > 0) inputFile = args[0];
         if (args.length > 1) numberOfDrones = Integer.parseInt(args[1]);
 
-        // Start GUI on Swing thread
-        SwingUtilities.invokeLater(() -> {
-            try { GuiMain.main(new String[0]); }
-            catch (Exception e) { e.printStackTrace(); }
-        });
-
-        Scheduler scheduler = new Scheduler();
-        FireIncidentSubsystem fireSubsystem = new FireIncidentSubsystem(scheduler, inputFile);
-
-        Thread schedulerThread = new Thread(scheduler, "Scheduler-Thread");
-        Thread fireThread = new Thread(fireSubsystem, "Fire-Subsystem-Thread");
-
-        DroneSubsystem drone = new DroneSubsystem(1, scheduler);
-        Thread droneThread = new Thread(drone, "Drone-1-Thread");
-
-        schedulerThread.start();
-
-        try { Thread.sleep(100); } catch (InterruptedException ignored) {}
-
-        fireThread.start();
-        droneThread.start();
-
         try {
+            List<Zone> zones = ZoneParser.loadZones(zoneFile);
+            InetAddress localhost = InetAddress.getByName("localhost");
+
+            // Start GUI on Swing thread
+            final List<Zone> guiZones = zones;
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    JFrame frame = new JFrame("Firefighting Drone Swarm - Iteration 3");
+                    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    MapPanel panel = new MapPanel(guiZones);
+                    frame.setContentPane(panel);
+                    frame.pack();
+                    frame.setLocationRelativeTo(null);
+                    frame.setVisible(true);
+                    panel.startAutoRepaint();
+                } catch (Exception e) { e.printStackTrace(); }
+            });
+
+            // Start Scheduler
+            Scheduler scheduler = new Scheduler(zones);
+            Thread schedulerThread = new Thread(scheduler, "Scheduler-Thread");
+            schedulerThread.start();
+
+            // Give scheduler time to bind ports
+            Thread.sleep(500);
+
+            // Start Drones
+            List<DroneSubsystem> drones = new ArrayList<>();
+            List<Thread> droneThreads = new ArrayList<>();
+            for (int i = 1; i <= numberOfDrones; i++) {
+                DroneSubsystem drone = new DroneSubsystem(i, localhost);
+                drones.add(drone);
+                Thread t = new Thread(drone, "Drone-" + i + "-Thread");
+                droneThreads.add(t);
+                t.start();
+                Thread.sleep(200); // stagger registration
+            }
+
+            // Give drones time to register
+            Thread.sleep(500);
+
+            // Start Fire Incident Subsystem
+            FireIncidentSubsystem fireSubsystem = new FireIncidentSubsystem(inputFile, localhost);
+            Thread fireThread = new Thread(fireSubsystem, "Fire-Subsystem-Thread");
+            fireThread.start();
+
+            // Wait for fire subsystem to finish sending + receiving confirmations
             fireThread.join();
-            Thread.sleep(1500);
+            Thread.sleep(15000); // allow remaining tasks to complete (drones may need to refill)
 
             System.out.println("\nShutting down...");
             scheduler.shutdown();
-            drone.shutdown();
 
-            schedulerThread.join(2000);
-            droneThread.join(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            for (DroneSubsystem drone : drones) {
+                drone.shutdown();
+            }
+
+            schedulerThread.join(3000);
+            for (Thread t : droneThreads) {
+                t.join(2000);
+            }
+
+        } catch (Exception e) {
+            System.err.println("[Main] Error: " + e.getMessage());
+            e.printStackTrace();
         }
 
         System.out.println("Shutdown complete.");
+    }
+
+    private static String resolvePath(String filename) {
+        if (new File(filename).exists()) return filename;
+        if (new File("src/" + filename).exists()) return "src/" + filename;
+        return filename;
     }
 }

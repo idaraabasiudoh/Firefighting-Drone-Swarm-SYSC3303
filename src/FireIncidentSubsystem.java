@@ -1,29 +1,44 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FireIncidentSubsystem implements Runnable {
-    private final Scheduler scheduler;
     private final String inputFilePath;
+    private final InetAddress schedulerAddress;
+    private DatagramSocket sendSocket;
+    private DatagramSocket receiveSocket;
     private volatile boolean running = true;
+    private int eventCount = 0;
 
-    public FireIncidentSubsystem(Scheduler scheduler, String inputFilePath) {
-        this.scheduler = scheduler;
+    public FireIncidentSubsystem(String inputFilePath, InetAddress schedulerAddress) {
         this.inputFilePath = inputFilePath;
+        this.schedulerAddress = schedulerAddress;
     }
 
     @Override
     public void run() {
         try {
+            sendSocket = new DatagramSocket();
+            receiveSocket = new DatagramSocket(UDPHelper.SCHEDULER_TO_FIRE_PORT);
+            receiveSocket.setSoTimeout(30000); // 30s timeout for confirmations (drones may need to refill)
+
             readAndProcessInputFile();
             waitForConfirmations();
         } catch (IOException | InterruptedException e) {
             System.err.println("[Fire Subsystem] Terminated: " + e.getMessage());
+        } finally {
+            if (sendSocket != null && !sendSocket.isClosed()) sendSocket.close();
+            if (receiveSocket != null && !receiveSocket.isClosed()) receiveSocket.close();
         }
         System.out.println("[Fire Subsystem] Shutdown complete.");
     }
 
     private void readAndProcessInputFile() throws IOException {
+        List<FireEvent> events = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath))) {
             String line;
             while ((line = reader.readLine()) != null && running) {
@@ -31,26 +46,50 @@ public class FireIncidentSubsystem implements Runnable {
 
                 FireEvent event = parseLineToFireEvent(line);
                 if (event != null) {
-                    scheduler.submitFireEvent(event);
+                    events.add(event);
                 }
             }
+        }
+
+        eventCount = events.size();
+
+        for (FireEvent event : events) {
+            if (!running) break;
+            String msg = UDPHelper.buildFireEventMessage(event);
+            UDPHelper.sendMessage(sendSocket, schedulerAddress, UDPHelper.FIRE_TO_SCHEDULER_PORT, msg);
+            System.out.println("[Fire Subsystem] Sent to Scheduler: " + event);
+
+            try { Thread.sleep(200); } catch (InterruptedException e) { break; }
         }
     }
 
     private void waitForConfirmations() throws InterruptedException {
         int received = 0;
-        int expected = 5; 
 
-        while (running && received < expected) {
-            DroneResult result = scheduler.waitForConfirmation();
-            if (result == null) break; 
+        while (running && received < eventCount) {
+            try {
+                String msg = UDPHelper.receiveMessage(receiveSocket);
+                String type = UDPHelper.getMessageType(msg);
 
-            System.out.println("[Fire Subsystem] Result Verified: Zone " + result.getZoneId());
-            received++;
+                if (type.equals(UDPHelper.MSG_SHUTDOWN)) {
+                    System.out.println("[Fire Subsystem] Received shutdown.");
+                    break;
+                }
+
+                if (type.equals(UDPHelper.MSG_CONFIRMATION)) {
+                    int zoneId = UDPHelper.parseConfirmationZoneId(msg);
+                    boolean completed = UDPHelper.parseConfirmationCompleted(msg);
+                    System.out.println("[Fire Subsystem] Result Verified: Zone " + zoneId + " completed=" + completed);
+                    received++;
+                }
+            } catch (IOException e) {
+                System.out.println("[Fire Subsystem] Timeout waiting for confirmations (" + received + "/" + eventCount + ")");
+                break;
+            }
         }
     }
 
-    private FireEvent parseLineToFireEvent(String line) {
+    public static FireEvent parseLineToFireEvent(String line) {
         String[] p = line.split(",");
         return new FireEvent(p[0].trim(), Integer.parseInt(p[1].trim()), 
                             FireEvent.EventType.valueOf(p[2].trim().toUpperCase()), 
@@ -59,5 +98,6 @@ public class FireIncidentSubsystem implements Runnable {
 
     public void shutdown() {
         this.running = false;
+        if (receiveSocket != null && !receiveSocket.isClosed()) receiveSocket.close();
     }
 }

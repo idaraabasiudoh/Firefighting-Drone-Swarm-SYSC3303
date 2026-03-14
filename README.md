@@ -82,3 +82,134 @@
   - Scheduler: **Ohioreuna Ajayi-Isuku**
   - Testing: **Divine Eyo & Suveatha Karunakaran**
   - Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
+
+## Iteration 3
+
+**Objective:** Refactor the system into three separate, independently runnable programs (Fire Incident Subsystem, Scheduler, Drone Subsystem) that communicate **exclusively via UDP**. Iteration 3 introduces multi-drone support with load balancing, closest-drone selection, passthrough redirection, automatic agent refill, and drop failure re-queuing. The GUI is updated to display multiple drone states, drone-to-zone assignment lines, and severity color-coded fires.
+
+### 1.0 Key Changes from Iteration 2
+- All inter-subsystem communication now uses **UDP datagrams** (no shared memory or direct method calls).
+- System is split into **3 standalone programs** that can run in separate JVM processes (or on separate machines).
+- **Multiple drones** operate concurrently, each with its own independent state machine.
+- Scheduler performs **load balancing** (closest idle drone with sufficient agent, task-count tiebreaker).
+- Drones **poll for REDIRECT commands** during travel and can be rerouted mid-flight.
+- Scheduler automatically sends **RETURN_BASE** when a drone's agent drops below the minimum threshold (10L), triggering an automatic refill at base.
+- **Drop failure handling**: incomplete tasks are re-queued for another drone.
+- GUI shows **per-drone markers**, **assignment lines** to target zones, and **severity-colored fires** (green = LOW, orange = MODERATE, red = HIGH).
+
+### 2.0 File Names
+#### 2.1 Main System
+  - **DroneCommand.java:** Command record used by the Scheduler to instruct drones (TASK, RETURN_BASE, REDIRECT, SHUTDOWN).
+  - **DroneInfo.java:** *(NEW)* Tracks per-drone state in the Scheduler's registry — ID, position, agent level, assignment, and tasks completed.
+  - **DroneResult.java:** Stores the outcome of a drone's task execution (drone ID, zone ID, completion status, remaining agent).
+  - **DroneState.java:** Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
+  - **DroneSubsystem.java:** *(REWRITTEN)* Independent drone worker communicating with the Scheduler via UDP. Polls for REDIRECT commands during travel using short-interval socket reads.
+  - **FireEvent.java:** Represents a single fire incident with time, zone, event type, and severity.
+  - **FireIncidentSubsystem.java:** *(REWRITTEN)* Reads fire incidents from CSV and sends them to the Scheduler via UDP. Waits for completion confirmations via UDP.
+  - **Scheduler.java:** *(REWRITTEN)* Multi-drone UDP scheduler with three internal threads (fire listener, drone listener, dispatch loop). Implements load balancing, passthrough redirect, automatic RETURN_BASE on low agent, and drop failure re-queuing.
+  - **UDPHelper.java:** *(NEW)* Utility class for UDP communication — message building/parsing for all 7 message types, send/receive helpers, and port constants.
+  - **fire_events.csv:** *(UPDATED)* Input file containing 7 fire events across 7 zones for multi-drone demonstration.
+#### 2.2 Standalone Entry Points (3 separate processes)
+  - **SchedulerMain.java:** *(NEW)* Entry point for the Scheduler process. Loads zones, launches the GUI, and starts the Scheduler.
+  - **DroneMain.java:** *(NEW)* Entry point for a single Drone process. Takes droneId as a required argument. Each drone runs as its own process.
+  - **FireIncidentMain.java:** *(NEW)* Entry point for the Fire Incident Subsystem process.
+  - **Main.java:** *(UPDATED)* Convenience launcher that starts all 3 subsystems (Scheduler, N drones, Fire Subsystem) in one JVM for quick testing. Default: 2 drones.
+#### 2.3 GUI
+  - **GuiMain.java:** Launches the graphical interface and initializes GUI components.
+  - **GuiModel.java:** *(REWRITTEN)* Thread-safe singleton tracking per-drone states, drone-to-zone assignments, and zone fire severities.
+  - **MapPanel.java:** *(REWRITTEN)* Renders the map with multi-drone status display, severity color-coded fire zones, drone-to-zone assignment lines, and a drone legend panel.
+  - **Zone.java:** Represents a geographical zone with ID and boundary coordinates.
+  - **ZoneParser.java:** Reads and parses zone definitions from a CSV file into Zone objects.
+  - **sample_zone_file.csv:** *(UPDATED)* Defines 7 zones (zones 1–7) for the GUI map.
+#### 2.4 Tests
+  - **UDPHelperTest.java:** *(NEW)* Tests message building, parsing, and UDP send/receive round-trips on localhost.
+  - **DroneSubsystemTest.java:** *(UPDATED)* Tests drone constructor, initial state, litersForSeverity, DroneResult creation, DroneCommand types, and DroneState enum.
+  - **FireEventTest.java:** Tests fire event construction, getLitersNeeded, and equality.
+  - **SchedulerTest.java:** *(REWRITTEN)* Tests multi-drone load balancing, closest-drone selection, insufficient-agent filtering, no-drone-available scenario, pending event queuing, and DroneInfo state helpers.
+
+### 3.0 Set-Up Instructions
+- **Java Version:** JAVA 21 (at least), JAVA 25 at most
+- Download/clone the repository
+
+#### 3.1 Running as 3 Separate Processes (Recommended)
+Open **four separate terminals** and start in this order:
+
+**Terminal 1 — Scheduler (start first):**
+```
+cd src
+javac *.java
+java SchedulerMain
+```
+
+**Terminal 2 — Drone 1:**
+```
+cd src
+java DroneMain 1
+```
+
+**Terminal 3 — Drone 2:**
+```
+cd src
+java DroneMain 2
+```
+
+**Terminal 4 — Fire Incident Subsystem (start last):**
+```
+cd src
+java FireIncidentMain
+```
+
+Optional arguments:
+- `java SchedulerMain [zoneFile]`
+- `java DroneMain <droneId> [agentCapacity] [schedulerHost]`
+- `java FireIncidentMain [inputFile] [schedulerHost]`
+
+#### 3.2 Convenience Launcher (All-in-One)
+```
+cd src
+javac *.java
+java Main                    # default: 2 drones
+java Main fire_events.csv 3  # custom fire file, 3 drones
+```
+
+#### 3.3 Tests
+Run the test files in the `Test/` directory using JUnit 5:
+```
+# From IDE: right-click Test/ directory → Run Tests
+# Or via command line with JUnit Platform Console Launcher
+```
+
+### 4.0 UDP Communication Protocol
+All inter-subsystem communication uses **pipe-delimited (`|`) UDP datagrams**:
+
+| Message Format | Direction |
+|---|---|
+| `FIRE_EVENT\|time\|zoneId\|eventType\|severity` | Fire Subsystem → Scheduler |
+| `DRONE_REGISTER\|droneId\|capacity\|x\|y` | Drone → Scheduler |
+| `DRONE_STATUS\|droneId\|state\|x\|y\|remainingAgent` | Drone → Scheduler |
+| `DRONE_COMMAND\|droneId\|commandType\|zoneId\|severity` | Scheduler → Drone |
+| `DRONE_RESULT\|droneId\|zoneId\|completed\|remainingAgent` | Drone → Scheduler |
+| `CONFIRMATION\|droneId\|zoneId\|completed` | Scheduler → Fire Subsystem |
+| `SHUTDOWN` | Scheduler → All |
+
+### 5.0 Port Assignments
+| Port | Usage |
+|------|-------|
+| 5000 | Fire Subsystem → Scheduler (fire events) |
+| 5001 | Scheduler → Fire Subsystem (confirmations) |
+| 5002 | Drone → Scheduler (register, status, results) |
+| 6000 + droneId | Scheduler → Drone (commands, e.g., 6001 for Drone 1) |
+
+### 6.0 Assumptions
+- All drones start at base position (0, 0) with a default agent capacity of 30.0 liters.
+- Travel time is fixed at 800ms (both to zone and returning to base).
+- Nozzle open time is 150ms; agent drop rate is 40ms per liter.
+- Agent required per severity: LOW = 10L, MODERATE = 20L, HIGH = 30L.
+- Drones are automatically sent back to base to refill when remaining agent drops below 10L.
+- The Scheduler, Drones, and Fire Subsystem all run on localhost by default but support configurable host addresses.
+
+### 7.0 Responsibilities
+  - UDP Communication & Multi-Drone Refactor: **Idara-Abasi Udoh**
+  - Scheduler Load Balancing & Redirect: **Ohioreuna Ajayi-Isuku**
+  - Testing: **Divine Eyo & Suveatha Karunakaran**
+  - Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**

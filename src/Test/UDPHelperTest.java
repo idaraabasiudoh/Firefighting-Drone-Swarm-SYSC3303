@@ -10,15 +10,15 @@ public class UDPHelperTest {
 
     @Test
     void testBuildFireEventMessage() {
-        String msg = UDPHelper.buildFireEventMessage("14:03:15", 3, "FIRE_DETECTED", "HIGH");
-        assertEquals("FIRE_EVENT|14:03:15|3|FIRE_DETECTED|HIGH", msg);
+        String msg = UDPHelper.buildFireEventMessage("14:03:15", 3, "FIRE_DETECTED", "HIGH", "NONE");
+        assertEquals("FIRE_EVENT|14:03:15|3|FIRE_DETECTED|HIGH|NONE", msg);
     }
 
     @Test
     void testBuildFireEventMessageFromObject() {
         FireEvent event = new FireEvent("14:03:15", 3, FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.HIGH);
         String msg = UDPHelper.buildFireEventMessage(event);
-        assertEquals("FIRE_EVENT|14:03:15|3|FIRE_DETECTED|HIGH", msg);
+        assertEquals("FIRE_EVENT|14:03:15|3|FIRE_DETECTED|HIGH|NONE", msg);
     }
 
     @Test
@@ -36,7 +36,7 @@ public class UDPHelperTest {
     @Test
     void testBuildDroneCommandMessage() {
         String msg = UDPHelper.buildDroneCommandMessage(1, "TASK", 3, "HIGH");
-        assertEquals("DRONE_COMMAND|1|TASK|3|HIGH", msg);
+        assertEquals("DRONE_COMMAND|1|TASK|3|HIGH|NONE", msg);
     }
 
     @Test
@@ -167,7 +167,7 @@ public class UDPHelperTest {
 
         DatagramSocket sender = new DatagramSocket();
 
-        String original = UDPHelper.buildFireEventMessage("14:03:15", 3, "FIRE_DETECTED", "HIGH");
+        String original = UDPHelper.buildFireEventMessage("14:03:15", 3, "FIRE_DETECTED", "HIGH", "NONE");
 
         InetAddress localhost = InetAddress.getByName("localhost");
         UDPHelper.sendMessage(sender, localhost, port, original);

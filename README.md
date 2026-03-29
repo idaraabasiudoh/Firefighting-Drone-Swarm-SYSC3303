@@ -6,28 +6,28 @@
 
 ### 1.0 File Names
 #### 1.1 Main System
-  - **DroneResult.java:** Stores the outcome of a drone’s task execution (if the task is completed).
-  - **DroneSubsystem.java:** Represents a drone worker thread. Requests tasks from the scheduler and processes assigned fire events.
-  - **FireEvent.java:** Object representing a single fire incident, including attributes such as zone, severity, and time.
-  - **FireIncidentSubsystem.java:** Reads fire incidents from the input file and submits them to the scheduler. 
-  - **Main.java:** Entry of program. It initializes the scheduler, subsystems and starts simulation.
-  - **Scheduler.java:** Manages shared task queues and synchronizes communication between fire events and drones.
-  - **fire_events.csv:** Input file containing a list of fire incidents used to drive the simulation.
+- **DroneResult.java:** Stores the outcome of a drone’s task execution (if the task is completed).
+- **DroneSubsystem.java:** Represents a drone worker thread. Requests tasks from the scheduler and processes assigned fire events.
+- **FireEvent.java:** Object representing a single fire incident, including attributes such as zone, severity, and time.
+- **FireIncidentSubsystem.java:** Reads fire incidents from the input file and submits them to the scheduler.
+- **Main.java:** Entry of program. It initializes the scheduler, subsystems and starts simulation.
+- **Scheduler.java:** Manages shared task queues and synchronizes communication between fire events and drones.
+- **fire_events.csv:** Input file containing a list of fire incidents used to drive the simulation.
 #### 1.2 GUI
-  - **GUIMain.java:** Launches the graphical interface and initializes GUI components.
-  - **MapPanel.java:** Displays the map and visual representation of zones, fires, and drone activity.
-  - **Zone.java:** Represents a geographical zone on the map, including its boundaries and identifiers.
-  - **ZoneParser.java:** Reads and parses zone data from a CSV file into Zone objects.
-  - **sample_zone_file.csv:** Input file defining zone layouts and coordinates for the GUI map.
+- **GUIMain.java:** Launches the graphical interface and initializes GUI components.
+- **MapPanel.java:** Displays the map and visual representation of zones, fires, and drone activity.
+- **Zone.java:** Represents a geographical zone on the map, including its boundaries and identifiers.
+- **ZoneParser.java:** Reads and parses zone data from a CSV file into Zone objects.
+- **sample_zone_file.csv:** Input file defining zone layouts and coordinates for the GUI map.
 #### 1.3 Tests
-  - **DroneResultTest.java:** Tests correctness of drone result data handling.
-  - **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
-  - **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
-  - **SubsystemsTest.java:** Integration tests to verify interaction between scheduler, drones, and fire subsystem.
-  - **TestRunner.java:** Executes all test cases.
+- **DroneResultTest.java:** Tests correctness of drone result data handling.
+- **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
+- **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
+- **SubsystemsTest.java:** Integration tests to verify interaction between scheduler, drones, and fire subsystem.
+- **TestRunner.java:** Executes all test cases.
 #### 1.4 Diagrams
-  - **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
-  - **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
+- **FDS_UMLClass.png:** UML class diagram showing system structure, classes, and relationships.
+- **FDS_Sequence.png:** Sequence diagram illustrating runtime interactions between the main system which includes the scheduler, fire subsystem, and drone subsystem.
 ### 2.0 Set-Up Instructions
 - **Java Version:** JAVA21 (at least), JAVA25 at most
 - Download repository
@@ -38,36 +38,36 @@
 #### 2.3 Test
     RUN THE "TestRunner.java" class 
 ### 3.0 Responsibilities
-  - Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
-  - Scheduler: **Ohioreuna Ajayi-Isuku**
-  - Testing: **Divine Eyo**
-  - Diagrams & Read-Me: **Suveatha Karunakaran**
+- Drone & FireIncident Subsystems: **Idara-Abasi Udoh**
+- Scheduler: **Ohioreuna Ajayi-Isuku**
+- Testing: **Divine Eyo**
+- Diagrams & Read-Me: **Suveatha Karunakaran**
 
 ## Iteration 2
 **Objective:** This project simulates a firefighting drone system composed of: -Scheduler - Fire Incident Subsystem - Drone Subsystem - GUI Visualization. Iteration 2 introduces core scheduling logic, drone state transitions, and GUI updates to track drone states and active fire incidents.
 
 ### 1.0 File Names
 #### 1.1 Main System
-  - **DroneCommand.java:** Command object used by the scheduler to send instructions to drones (task assignment, return to base, or shutdown).
-  - **DroneResult.java:** Stores the outcome of a drone's task execution (if the task is completed).
-  - **DroneState.java:** Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
-  - **DroneSubsystem.java:** Represents a drone worker thread. Requests tasks from the scheduler and processes assigned fire events.
-  - **FireEvent.java:** Object representing a single fire incident, including attributes such as zone, severity, and time.
-  - **FireIncidentSubsystem.java:** Reads fire incidents from the input file and submits them to the scheduler.
-  - **Main.java:** Entry of program. It initializes the scheduler, subsystems and starts simulation.
-  - **Scheduler.java:** Manages shared task queues and synchronizes communication between fire events and drones.
-  - **fire_events.csv:** Input file containing a list of fire incidents used to drive the simulation.
+- **DroneCommand.java:** Command object used by the scheduler to send instructions to drones (task assignment, return to base, or shutdown).
+- **DroneResult.java:** Stores the outcome of a drone's task execution (if the task is completed).
+- **DroneState.java:** Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
+- **DroneSubsystem.java:** Represents a drone worker thread. Requests tasks from the scheduler and processes assigned fire events.
+- **FireEvent.java:** Object representing a single fire incident, including attributes such as zone, severity, and time.
+- **FireIncidentSubsystem.java:** Reads fire incidents from the input file and submits them to the scheduler.
+- **Main.java:** Entry of program. It initializes the scheduler, subsystems and starts simulation.
+- **Scheduler.java:** Manages shared task queues and synchronizes communication between fire events and drones.
+- **fire_events.csv:** Input file containing a list of fire incidents used to drive the simulation.
 #### 1.2 GUI
-  - **GuiMain.java:** Launches the graphical interface and initializes GUI components.
-  - **GuiModel.java:** Thread-safe shared model that the scheduler updates and the GUI reads to track drone states and active fire zones.
-  - **MapPanel.java:** Displays the map and visual representation of zones, fires, and drone activity.
-  - **Zone.java:** Represents a geographical zone on the map, including its boundaries and identifiers.
-  - **ZoneParser.java:** Reads and parses zone data from a CSV file into Zone objects.
-  - **sample_zone_file.csv:** Input file defining zone layouts and coordinates for the GUI map.
+- **GuiMain.java:** Launches the graphical interface and initializes GUI components.
+- **GuiModel.java:** Thread-safe shared model that the scheduler updates and the GUI reads to track drone states and active fire zones.
+- **MapPanel.java:** Displays the map and visual representation of zones, fires, and drone activity.
+- **Zone.java:** Represents a geographical zone on the map, including its boundaries and identifiers.
+- **ZoneParser.java:** Reads and parses zone data from a CSV file into Zone objects.
+- **sample_zone_file.csv:** Input file defining zone layouts and coordinates for the GUI map.
 #### 1.3 Tests
-  - **DroneSubsystemTest.java:** Tests drone subsystem behavior and state transitions.
-  - **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
-  - **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
+- **DroneSubsystemTest.java:** Tests drone subsystem behavior and state transitions.
+- **FireEventTest.java:** Ensures fire event objects are created and interpreted correctly.
+- **SchedulerTest.java:** Tests task coordination, queue handling, and synchronization logic.
 ### 2.0 Set-Up Instructions
 - **Java Version:** JAVA21 (at least), JAVA25 at most
 - Download repository
@@ -78,10 +78,10 @@
 #### 2.3 Test
     RUN THE test files in the "Test/" directory
 ### 3.0 Responsibilities
-  - Drone & FireIncident Subsystems: **Ohioreuna Ajayi-Isuku**
-  - Scheduler: **Ohioreuna Ajayi-Isuku**
-  - Testing: **Divine Eyo & Suveatha Karunakaran**
-  - Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
+- Drone & FireIncident Subsystems: **Ohioreuna Ajayi-Isuku**
+- Scheduler: **Ohioreuna Ajayi-Isuku**
+- Testing: **Divine Eyo & Suveatha Karunakaran**
+- Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
 
 ## Iteration 3
 
@@ -99,33 +99,33 @@
 
 ### 2.0 File Names
 #### 2.1 Main System
-  - **DroneCommand.java:** Command record used by the Scheduler to instruct drones (TASK, RETURN_BASE, REDIRECT, SHUTDOWN).
-  - **DroneInfo.java:** *(NEW)* Tracks per-drone state in the Scheduler's registry — ID, position, agent level, assignment, and tasks completed.
-  - **DroneResult.java:** Stores the outcome of a drone's task execution (drone ID, zone ID, completion status, remaining agent).
-  - **DroneState.java:** Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
-  - **DroneSubsystem.java:** *(REWRITTEN)* Independent drone worker communicating with the Scheduler via UDP. Polls for REDIRECT commands during travel using short-interval socket reads.
-  - **FireEvent.java:** Represents a single fire incident with time, zone, event type, and severity.
-  - **FireIncidentSubsystem.java:** *(REWRITTEN)* Reads fire incidents from CSV and sends them to the Scheduler via UDP. Waits for completion confirmations via UDP.
-  - **Scheduler.java:** *(REWRITTEN)* Multi-drone UDP scheduler with three internal threads (fire listener, drone listener, dispatch loop). Implements load balancing, passthrough redirect, automatic RETURN_BASE on low agent, and drop failure re-queuing.
-  - **UDPHelper.java:** *(NEW)* Utility class for UDP communication — message building/parsing for all 7 message types, send/receive helpers, and port constants.
-  - **fire_events.csv:** *(UPDATED)* Input file containing 7 fire events across 7 zones for multi-drone demonstration.
+- **DroneCommand.java:** Command record used by the Scheduler to instruct drones (TASK, RETURN_BASE, REDIRECT, SHUTDOWN).
+- **DroneInfo.java:** *(NEW)* Tracks per-drone state in the Scheduler's registry — ID, position, agent level, assignment, and tasks completed.
+- **DroneResult.java:** Stores the outcome of a drone's task execution (drone ID, zone ID, completion status, remaining agent).
+- **DroneState.java:** Enum defining drone states (IDLE, EN_ROUTE, DROPPING_AGENT, RETURNING_BASE, SHUTDOWN).
+- **DroneSubsystem.java:** *(REWRITTEN)* Independent drone worker communicating with the Scheduler via UDP. Polls for REDIRECT commands during travel using short-interval socket reads.
+- **FireEvent.java:** Represents a single fire incident with time, zone, event type, and severity.
+- **FireIncidentSubsystem.java:** *(REWRITTEN)* Reads fire incidents from CSV and sends them to the Scheduler via UDP. Waits for completion confirmations via UDP.
+- **Scheduler.java:** *(REWRITTEN)* Multi-drone UDP scheduler with three internal threads (fire listener, drone listener, dispatch loop). Implements load balancing, passthrough redirect, automatic RETURN_BASE on low agent, and drop failure re-queuing.
+- **UDPHelper.java:** *(NEW)* Utility class for UDP communication — message building/parsing for all 7 message types, send/receive helpers, and port constants.
+- **fire_events.csv:** *(UPDATED)* Input file containing 7 fire events across 7 zones for multi-drone demonstration.
 #### 2.2 Standalone Entry Points (3 separate processes)
-  - **SchedulerMain.java:** *(NEW)* Entry point for the Scheduler process. Loads zones, launches the GUI, and starts the Scheduler.
-  - **DroneMain.java:** *(NEW)* Entry point for a single Drone process. Takes droneId as a required argument. Each drone runs as its own process.
-  - **FireIncidentMain.java:** *(NEW)* Entry point for the Fire Incident Subsystem process.
-  - **Main.java:** *(UPDATED)* Convenience launcher that starts all 3 subsystems (Scheduler, N drones, Fire Subsystem) in one JVM for quick testing. Default: 2 drones.
+- **SchedulerMain.java:** *(NEW)* Entry point for the Scheduler process. Loads zones, launches the GUI, and starts the Scheduler.
+- **DroneMain.java:** *(NEW)* Entry point for a single Drone process. Takes droneId as a required argument. Each drone runs as its own process.
+- **FireIncidentMain.java:** *(NEW)* Entry point for the Fire Incident Subsystem process.
+- **Main.java:** *(UPDATED)* Convenience launcher that starts all 3 subsystems (Scheduler, N drones, Fire Subsystem) in one JVM for quick testing. Default: 2 drones.
 #### 2.3 GUI
-  - **GuiMain.java:** Launches the graphical interface and initializes GUI components.
-  - **GuiModel.java:** *(REWRITTEN)* Thread-safe singleton tracking per-drone states, drone-to-zone assignments, and zone fire severities.
-  - **MapPanel.java:** *(REWRITTEN)* Renders the map with multi-drone status display, severity color-coded fire zones, drone-to-zone assignment lines, and a drone legend panel.
-  - **Zone.java:** Represents a geographical zone with ID and boundary coordinates.
-  - **ZoneParser.java:** Reads and parses zone definitions from a CSV file into Zone objects.
-  - **sample_zone_file.csv:** *(UPDATED)* Defines 7 zones (zones 1–7) for the GUI map.
+- **GuiMain.java:** Launches the graphical interface and initializes GUI components.
+- **GuiModel.java:** *(REWRITTEN)* Thread-safe singleton tracking per-drone states, drone-to-zone assignments, and zone fire severities.
+- **MapPanel.java:** *(REWRITTEN)* Renders the map with multi-drone status display, severity color-coded fire zones, drone-to-zone assignment lines, and a drone legend panel.
+- **Zone.java:** Represents a geographical zone with ID and boundary coordinates.
+- **ZoneParser.java:** Reads and parses zone definitions from a CSV file into Zone objects.
+- **sample_zone_file.csv:** *(UPDATED)* Defines 7 zones (zones 1–7) for the GUI map.
 #### 2.4 Tests
-  - **UDPHelperTest.java:** *(NEW)* Tests message building, parsing, and UDP send/receive round-trips on localhost.
-  - **DroneSubsystemTest.java:** *(UPDATED)* Tests drone constructor, initial state, litersForSeverity, DroneResult creation, DroneCommand types, and DroneState enum.
-  - **FireEventTest.java:** Tests fire event construction, getLitersNeeded, and equality.
-  - **SchedulerTest.java:** *(REWRITTEN)* Tests multi-drone load balancing, closest-drone selection, insufficient-agent filtering, no-drone-available scenario, pending event queuing, and DroneInfo state helpers.
+- **UDPHelperTest.java:** *(NEW)* Tests message building, parsing, and UDP send/receive round-trips on localhost.
+- **DroneSubsystemTest.java:** *(UPDATED)* Tests drone constructor, initial state, litersForSeverity, DroneResult creation, DroneCommand types, and DroneState enum.
+- **FireEventTest.java:** Tests fire event construction, getLitersNeeded, and equality.
+- **SchedulerTest.java:** *(REWRITTEN)* Tests multi-drone load balancing, closest-drone selection, insufficient-agent filtering, no-drone-available scenario, pending event queuing, and DroneInfo state helpers.
 
 ### 3.0 Set-Up Instructions
 - **Java Version:** JAVA 21 (at least), JAVA 25 at most
@@ -209,7 +209,82 @@ All inter-subsystem communication uses **pipe-delimited (`|`) UDP datagrams**:
 - The Scheduler, Drones, and Fire Subsystem all run on localhost by default but support configurable host addresses.
 
 ### 7.0 Responsibilities
-  - UDP Communication & Multi-Drone Refactor: **Idara-Abasi Udoh**
-  - Scheduler Load Balancing & Redirect: **Ohioreuna Ajayi-Isuku**
-  - Testing: **Divine Eyo & Suveatha Karunakaran**
-  - Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
+- UDP Communication & Multi-Drone Refactor: **Idara-Abasi Udoh**
+- Scheduler Load Balancing & Redirect: **Ohioreuna Ajayi-Isuku**
+- Testing: **Divine Eyo & Suveatha Karunakaran**
+- Diagrams & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
+
+## Iteration 4
+
+**Objective:** Add **fault detection and handling** to the drone swarm system. Faults are injected via the input file (`fire_events.csv`), simulated by drones during task execution, and detected by the Scheduler through both direct fault reports and timer-based timeout monitoring. The GUI is updated to visually distinguish faulted drones. All log output now includes timestamps.
+
+### 1.0 Key Changes from Iteration 3
+- **Fault injection via input file**: A 5th column in `fire_events.csv` specifies the fault type (NONE, DRONE_STUCK, NOZZLE_STUCK, SENSOR_FAIL).
+- **Three fault types**:
+    - `DRONE_STUCK` (soft): Drone freezes mid-flight, self-recovers after 3s, returns to base.
+    - `NOZZLE_STUCK` (hard): Nozzle jams during drop, drone goes permanently OFFLINE.
+    - `SENSOR_FAIL` (soft): Arrival sensor fails, drone self-recovers after 3s, returns to base.
+- **Drone fault simulation**: `DroneSubsystem.handleTask()` simulates faults based on the injected fault type and sends `DRONE_FAULT` messages to the Scheduler.
+- **Scheduler fault handling**: New `handleDroneFault()` processes fault reports, re-queues affected fire events, and marks drones offline for hard faults.
+- **Timer-based fault detection**: A `faultMonitorLoop` thread in the Scheduler detects unresponsive drones via configurable timeouts.
+- **GUI fault visualization**: Faulted drones display with distinct colors (yellow = stuck, dark red = nozzle, orange = sensor, grey = offline) and X markers on the map.
+- **Timestamped logging**: All Scheduler and Drone log output uses `[yyyy-MM-dd HH:mm:ss.SSS]` prefix via `UDPHelper.timestamp()`.
+
+### 2.0 New/Modified Files
+#### 2.1 New Files
+- **FaultType.java:** Enum defining fault types (NONE, DRONE_STUCK, NOZZLE_STUCK, SENSOR_FAIL) with `isHardFault()`, `isSoftFault()`, and `fromString()` utility methods.
+
+#### 2.2 Modified Files
+- **DroneState.java:** Added fault states: FAULT_STUCK, FAULT_NOZZLE, FAULT_SENSOR, OFFLINE.
+- **FireEvent.java:** Added `faultType` field (FaultType), 5-argument constructor, getter/setter.
+- **DroneInfo.java:** Added `dispatchTimestamp`, `currentFault`, `faultCount`, `permanentlyOffline` fields and `isAvailable()` method.
+- **UDPHelper.java:** Added `MSG_DRONE_FAULT` message type, fault fields in FIRE_EVENT/DRONE_COMMAND messages, `buildDroneFaultMessage()`, fault parsers, and `timestamp()`.
+- **DroneSubsystem.java:** Fault simulation in `handleTask()`, `sendFaultToScheduler()`, timestamped `log()` method.
+- **Scheduler.java:** `handleDroneFault()`, `requeueZone()`, `faultMonitorLoop()` thread, `handleTimeoutFault()`, timestamped `log()`.
+- **GuiModel.java:** Added `droneFaults` map with `setDroneFault()`, `getDroneFault()`, `snapshotDroneFaults()`.
+- **MapPanel.java:** Fault colors, X markers for faulted drones, fault labels in header.
+- **FireIncidentSubsystem.java:** Parses optional 5th fault column from CSV.
+- **fire_events.csv:** Added fault column (5th field) with sample fault injections.
+- **Main.java:** Updated title to Iteration 4.
+- **SchedulerMain.java:** Updated GUI title to Iteration 4.
+
+#### 2.3 New Tests
+- **DroneSubsystemTest.java:** Added tests for FaultType enum, hard/soft classification, `fromString()`, FireEvent with fault type, updated DroneState count.
+- **SchedulerTest.java:** Added tests for offline drone skipping, fault tracking on DroneInfo, dispatch timestamp, UDP fault message build/parse, CSV fault parsing.
+
+#### 2.4 Diagrams
+- **Diagrams/Iteration4/state_drone.mmd:** Mermaid state diagram showing all drone states including fault transitions.
+- **Diagrams/Iteration4/sequence_fault.mmd:** Mermaid sequence diagram illustrating normal, soft fault, and hard fault scenarios.
+- **Diagrams/Iteration4/class_diagram.puml:** PlantUML class diagram with all Iteration 4 classes, fields, and relationships.
+
+#### 2.5 Documentation
+- **docs.md:** Comprehensive Iteration 4 documentation covering fault types, injection, simulation, handling, UDP protocol, GUI, logging, testing, and configuration.
+
+### 3.0 Updated UDP Protocol
+| Message Format | Direction |
+|---|---|
+| `FIRE_EVENT\|time\|zoneId\|eventType\|severity\|faultType` | Fire Subsystem → Scheduler |
+| `DRONE_COMMAND\|droneId\|commandType\|zoneId\|severity\|faultType` | Scheduler → Drone |
+| `DRONE_FAULT\|droneId\|faultType\|zoneId` | Drone → Scheduler *(NEW)* |
+| `DRONE_REGISTER\|droneId\|capacity\|x\|y` | Drone → Scheduler |
+| `DRONE_STATUS\|droneId\|state\|x\|y\|remainingAgent` | Drone → Scheduler |
+| `DRONE_RESULT\|droneId\|zoneId\|completed\|remainingAgent` | Drone → Scheduler |
+| `CONFIRMATION\|droneId\|zoneId\|completed` | Scheduler → Fire Subsystem |
+| `SHUTDOWN` | Scheduler → All |
+
+### 4.0 Configuration Constants
+| Constant | Value | Location |
+|---|---|---|
+| `FAULT_RESET_DELAY_MS` | 3000ms | DroneSubsystem |
+| `TRAVEL_TIMEOUT_MS` | 5000ms | Scheduler |
+| `DROP_TIMEOUT_MS` | 5000ms | Scheduler |
+| `FAULT_MONITOR_INTERVAL_MS` | 1000ms | Scheduler |
+
+### 5.0 Set-Up Instructions
+Same as Iteration 3. The `fire_events.csv` now includes a 5th column for fault injection. Events without a fault column default to `NONE`.
+
+### 6.0 Responsibilities
+- Fault Handling & Drone Simulation: **Idara-Abasi Udoh**
+- Scheduler Fault Detection & Timer: **Ohioreuna Ajayi-Isuku**
+- Testing: **Divine Eyo & Suveatha Karunakaran**
+- Diagrams, Documentation & Read-Me: **Idara-Abasi Udoh & Divine Eyo**

@@ -1,4 +1,4 @@
-// Main.java  (Iteration 3: convenience launcher — starts all 3 subsystems in one JVM via UDP)
+// Main.java  (Iteration 4: convenience launcher — starts all 3 subsystems in one JVM via UDP, fault handling)
 // For production, run SchedulerMain, DroneMain, and FireIncidentMain as separate processes.
 
 import javax.swing.*;
@@ -9,7 +9,7 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Firefighting Drone Swarm System - Iteration 3 (Multi-Drone, UDP)");
+        System.out.println("Firefighting Drone Swarm System - Iteration 4 (Multi-Drone, UDP, Fault Handling)");
 
         String inputFile = resolvePath("fire_events.csv");
         String zoneFile = resolvePath("sample_zone_file.csv");
@@ -26,7 +26,7 @@ public class Main {
             final List<Zone> guiZones = zones;
             SwingUtilities.invokeLater(() -> {
                 try {
-                    JFrame frame = new JFrame("Firefighting Drone Swarm - Iteration 3");
+                    JFrame frame = new JFrame("Firefighting Drone Swarm - Iteration 4");
                     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                     MapPanel panel = new MapPanel(guiZones);
                     frame.setContentPane(panel);

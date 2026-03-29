@@ -14,6 +14,12 @@ public class DroneInfo {
     private int tasksCompleted;
     private int listenPort;           // port this drone listens on for commands
 
+    // Iteration 4: Fault tracking
+    private long dispatchTimestamp;    // System.currentTimeMillis() when dispatched
+    private FaultType currentFault = FaultType.NONE;
+    private int faultCount;
+    private boolean permanentlyOffline; // true after a hard fault (e.g. NOZZLE_STUCK)
+
     public DroneInfo(int droneId, double agentCapacity, int x, int y, int listenPort) {
         this.droneId = droneId;
         this.agentCapacity = agentCapacity;
@@ -25,6 +31,10 @@ public class DroneInfo {
         this.assignedSeverity = null;
         this.tasksCompleted = 0;
         this.listenPort = listenPort;
+        this.dispatchTimestamp = 0;
+        this.currentFault = FaultType.NONE;
+        this.faultCount = 0;
+        this.permanentlyOffline = false;
     }
 
     // -------- Getters --------
@@ -38,6 +48,10 @@ public class DroneInfo {
     public String getAssignedSeverity() { return assignedSeverity; }
     public int getTasksCompleted() { return tasksCompleted; }
     public int getListenPort() { return listenPort; }
+    public long getDispatchTimestamp() { return dispatchTimestamp; }
+    public FaultType getCurrentFault() { return currentFault; }
+    public int getFaultCount() { return faultCount; }
+    public boolean isPermanentlyOffline() { return permanentlyOffline; }
 
     // -------- Setters --------
     public void setState(DroneState state) { this.state = state; }
@@ -48,9 +62,14 @@ public class DroneInfo {
     public void setAssignedSeverity(String severity) { this.assignedSeverity = severity; }
     public void incrementTasksCompleted() { this.tasksCompleted++; }
     public void setListenPort(int port) { this.listenPort = port; }
+    public void setDispatchTimestamp(long ts) { this.dispatchTimestamp = ts; }
+    public void setCurrentFault(FaultType fault) { this.currentFault = fault; }
+    public void incrementFaultCount() { this.faultCount++; }
+    public void setPermanentlyOffline(boolean offline) { this.permanentlyOffline = offline; }
 
     public boolean isIdle() { return state == DroneState.IDLE; }
     public boolean hasEnoughAgent(int litersNeeded) { return remainingAgent >= litersNeeded; }
+    public boolean isAvailable() { return isIdle() && !permanentlyOffline; }
 
     public void clearAssignment() {
         this.assignedZoneId = -1;
@@ -63,7 +82,7 @@ public class DroneInfo {
 
     @Override
     public String toString() {
-        return String.format("DroneInfo[id=%d, state=%s, pos=(%d,%d), agent=%.1f, assigned=Zone%d, tasks=%d]",
-                droneId, state, currentX, currentY, remainingAgent, assignedZoneId, tasksCompleted);
+        return String.format("DroneInfo[id=%d, state=%s, pos=(%d,%d), agent=%.1f, assigned=Zone%d, tasks=%d, fault=%s, offline=%s]",
+                droneId, state, currentX, currentY, remainingAgent, assignedZoneId, tasksCompleted, currentFault, permanentlyOffline);
     }
 }

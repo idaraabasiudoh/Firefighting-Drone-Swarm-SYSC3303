@@ -2,10 +2,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Utility class for UDP communication between subsystems.
  * Uses pipe-delimited string messages for easy testing and debugging.
+ * Iteration 4: Added DRONE_FAULT message, fault fields in FIRE_EVENT/DRONE_COMMAND, timestamps.
  */
 public class UDPHelper {
 
@@ -24,7 +27,15 @@ public class UDPHelper {
     public static final String MSG_DRONE_COMMAND = "DRONE_COMMAND";
     public static final String MSG_DRONE_RESULT = "DRONE_RESULT";
     public static final String MSG_CONFIRMATION = "CONFIRMATION";
+    public static final String MSG_DRONE_FAULT = "DRONE_FAULT";
     public static final String MSG_SHUTDOWN = "SHUTDOWN";
+
+    // ==================== Timestamp Utility ====================
+    private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+    public static String timestamp() {
+        return LocalDateTime.now().format(TS_FMT);
+    }
 
     // ==================== Send / Receive ====================
 
@@ -54,14 +65,15 @@ public class UDPHelper {
 
     // ==================== Message Builders ====================
 
-    // FIRE_EVENT|time|zoneId|eventType|severity
-    public static String buildFireEventMessage(String time, int zoneId, String eventType, String severity) {
-        return MSG_FIRE_EVENT + "|" + time + "|" + zoneId + "|" + eventType + "|" + severity;
+    // FIRE_EVENT|time|zoneId|eventType|severity|faultType
+    public static String buildFireEventMessage(String time, int zoneId, String eventType, String severity, String faultType) {
+        return MSG_FIRE_EVENT + "|" + time + "|" + zoneId + "|" + eventType + "|" + severity + "|" + faultType;
     }
 
     public static String buildFireEventMessage(FireEvent event) {
         return buildFireEventMessage(event.getTime(), event.getZoneId(),
-                event.getEventType().name(), event.getSeverity().name());
+                event.getEventType().name(), event.getSeverity().name(),
+                event.getFaultType().name());
     }
 
     // DRONE_REGISTER|droneId|capacity|x|y
@@ -74,9 +86,18 @@ public class UDPHelper {
         return MSG_DRONE_STATUS + "|" + droneId + "|" + state + "|" + x + "|" + y + "|" + remainingAgent;
     }
 
-    // DRONE_COMMAND|droneId|commandType|zoneId|severity
+    // DRONE_COMMAND|droneId|commandType|zoneId|severity|faultType
     public static String buildDroneCommandMessage(int droneId, String commandType, int zoneId, String severity) {
-        return MSG_DRONE_COMMAND + "|" + droneId + "|" + commandType + "|" + zoneId + "|" + severity;
+        return buildDroneCommandMessage(droneId, commandType, zoneId, severity, "NONE");
+    }
+
+    public static String buildDroneCommandMessage(int droneId, String commandType, int zoneId, String severity, String faultType) {
+        return MSG_DRONE_COMMAND + "|" + droneId + "|" + commandType + "|" + zoneId + "|" + severity + "|" + faultType;
+    }
+
+    // DRONE_FAULT|droneId|faultType|zoneId
+    public static String buildDroneFaultMessage(int droneId, String faultType, int zoneId) {
+        return MSG_DRONE_FAULT + "|" + droneId + "|" + faultType + "|" + zoneId;
     }
 
     // DRONE_RESULT|droneId|zoneId|completed|remainingAgent
@@ -110,7 +131,7 @@ public class UDPHelper {
         return message.split("\\|");
     }
 
-    // Parse FIRE_EVENT|time|zoneId|eventType|severity -> FireEvent
+    // Parse FIRE_EVENT|time|zoneId|eventType|severity|faultType -> FireEvent
     public static FireEvent parseFireEvent(String message) {
         String[] fields = parseFields(message);
         // fields[0] = "FIRE_EVENT"
@@ -118,7 +139,8 @@ public class UDPHelper {
         int zoneId = Integer.parseInt(fields[2]);
         FireEvent.EventType eventType = FireEvent.EventType.valueOf(fields[3]);
         FireEvent.Severity severity = FireEvent.Severity.valueOf(fields[4]);
-        return new FireEvent(time, zoneId, eventType, severity);
+        FaultType fault = (fields.length > 5) ? FaultType.fromString(fields[5]) : FaultType.NONE;
+        return new FireEvent(time, zoneId, eventType, severity, fault);
     }
 
     // Parse DRONE_REGISTER|droneId|capacity|x|y -> int[] {droneId, x, y} + double capacity
@@ -174,6 +196,24 @@ public class UDPHelper {
 
     public static String parseDroneCommandSeverity(String message) {
         return parseFields(message)[4];
+    }
+
+    public static String parseDroneCommandFault(String message) {
+        String[] fields = parseFields(message);
+        return (fields.length > 5) ? fields[5] : "NONE";
+    }
+
+    // Parse DRONE_FAULT|droneId|faultType|zoneId
+    public static int parseDroneFaultDroneId(String message) {
+        return Integer.parseInt(parseFields(message)[1]);
+    }
+
+    public static String parseDroneFaultType(String message) {
+        return parseFields(message)[2];
+    }
+
+    public static int parseDroneFaultZoneId(String message) {
+        return Integer.parseInt(parseFields(message)[3]);
     }
 
     // Parse DRONE_RESULT|droneId|zoneId|completed|remainingAgent

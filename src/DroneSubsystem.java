@@ -1,4 +1,4 @@
-// DroneSubsystem.java  (Iteration 3: UDP communication, independent state machine, multi-drone)
+// DroneSubsystem.java  (Iteration 4: UDP communication, fault handling, independent state machine)
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -25,6 +25,9 @@ public class DroneSubsystem implements Runnable {
     private DatagramSocket commandSocket; // listens for commands from scheduler
     private DatagramSocket sendSocket;    // sends messages to scheduler
 
+    // Iteration 4: Fault simulation
+    private static final int FAULT_RESET_DELAY_MS = 3000; // Time for soft fault recovery
+
     public DroneSubsystem(int droneId, InetAddress schedulerAddress, double agentCapacity) {
         this.droneId = droneId;
         this.schedulerAddress = schedulerAddress;
@@ -37,6 +40,7 @@ public class DroneSubsystem implements Runnable {
         this(droneId, schedulerAddress, 30.0);
     }
 
+    // ==================== MAIN RUN LOOP ====================
     @Override
     public void run() {
         try {
@@ -45,7 +49,7 @@ public class DroneSubsystem implements Runnable {
             commandSocket.setSoTimeout(2000); // 2s timeout for polling
             sendSocket = new DatagramSocket();
 
-            System.out.println("[Drone " + droneId + "] Started, listening on port " + listenPort);
+            log("Started, listening on port " + listenPort);
 
             // Register with scheduler
             registerWithScheduler();
@@ -70,12 +74,12 @@ public class DroneSubsystem implements Runnable {
                                 handleRedirect(msg);
                                 break;
                             case "SHUTDOWN":
-                                System.out.println("[Drone " + droneId + "] Received SHUTDOWN");
+                                log("Received SHUTDOWN");
                                 setState(DroneState.SHUTDOWN);
                                 running = false;
                                 break;
                             default:
-                                System.out.println("[Drone " + droneId + "] Unknown command: " + cmdType);
+                                log("Unknown command: " + cmdType);
                         }
                     }
                 } catch (SocketTimeoutException e) {
@@ -92,13 +96,15 @@ public class DroneSubsystem implements Runnable {
             if (commandSocket != null && !commandSocket.isClosed()) commandSocket.close();
             if (sendSocket != null && !sendSocket.isClosed()) sendSocket.close();
         }
-        System.out.println("[Drone " + droneId + "] Shutdown complete.");
+        log("Shutdown complete.");
     }
+
+    // ==================== REGISTRATION & MESSAGING ====================
 
     private void registerWithScheduler() throws IOException {
         String msg = UDPHelper.buildDroneRegisterMessage(droneId, agentCapacity, currentX, currentY);
         UDPHelper.sendMessage(sendSocket, schedulerAddress, schedulerPort, msg);
-        System.out.println("[Drone " + droneId + "] Registered with scheduler");
+        log("Registered with scheduler");
     }
 
     private void sendStatusToScheduler() {
@@ -120,9 +126,21 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    private void sendFaultToScheduler(FaultType fault, int zoneId) {
+        try {
+            String msg = UDPHelper.buildDroneFaultMessage(droneId, fault.name(), zoneId);
+            UDPHelper.sendMessage(sendSocket, schedulerAddress, schedulerPort, msg);
+        } catch (IOException e) {
+            System.err.println("[Drone " + droneId + "] Failed to send fault report: " + e.getMessage());
+        }
+    }
+
+    // ==================== TASK HANDLING (with Fault Injection) ====================
+
     private void handleTask(String msg) {
         int zoneId = UDPHelper.parseDroneCommandZoneId(msg);
         String severity = UDPHelper.parseDroneCommandSeverity(msg);
+        FaultType fault = FaultType.fromString(UDPHelper.parseDroneCommandFault(msg));
         int litersNeeded = litersForSeverity(severity);
 
         // If not enough agent, return to base first
@@ -137,15 +155,42 @@ public class DroneSubsystem implements Runnable {
 
             setState(DroneState.EN_ROUTE);
             sendStatusToScheduler();
-            System.out.println("[Drone " + droneId + "] EN_ROUTE to Zone " + zoneId);
+            log("EN_ROUTE to Zone " + zoneId + (fault != FaultType.NONE ? " [FAULT INJECTED: " + fault + "]" : ""));
 
-            // Travel with redirect polling: instead of sleeping the full travel time,
-            // poll the command socket in short intervals to catch REDIRECT commands
+            // ===== FAULT: DRONE_STUCK — drone freezes mid-flight =====
+            if (fault == FaultType.DRONE_STUCK) {
+                travelWithRedirectPolling(travelTimeMs() / 2); // Travel partway then freeze
+                log("FAULT: Stuck mid-flight to Zone " + zoneId);
+                setState(DroneState.FAULT_STUCK);
+                sendStatusToScheduler();
+                sendFaultToScheduler(FaultType.DRONE_STUCK, zoneId);
+
+                Thread.sleep(FAULT_RESET_DELAY_MS); // Simulate recovery delay
+                log("Recovered from DRONE_STUCK fault, resetting...");
+                doReturnToBase();
+                return;
+            }
+
+            // ===== FAULT: SENSOR_FAIL — drone doesn't detect zone arrival =====
+            if (fault == FaultType.SENSOR_FAIL) {
+                travelWithRedirectPolling(travelTimeMs());
+                log("FAULT: Arrival sensor failed at Zone " + zoneId);
+                setState(DroneState.FAULT_SENSOR);
+                sendStatusToScheduler();
+                sendFaultToScheduler(FaultType.SENSOR_FAIL, zoneId);
+
+                Thread.sleep(FAULT_RESET_DELAY_MS); // Simulate recovery delay
+                log("Recovered from SENSOR_FAIL, resetting...");
+                doReturnToBase();
+                return;
+            }
+
+            // Normal travel with redirect polling
             travelWithRedirectPolling(travelTimeMs());
 
             // Check if redirected during travel
             if (redirectZoneId != -1) {
-                System.out.println("[Drone " + droneId + "] Redirected to Zone " + redirectZoneId + " during travel");
+                log("Redirected to Zone " + redirectZoneId + " during travel");
                 zoneId = redirectZoneId;
                 severity = redirectSeverity;
                 litersNeeded = litersForSeverity(severity);
@@ -155,10 +200,24 @@ public class DroneSubsystem implements Runnable {
 
             setState(DroneState.DROPPING_AGENT);
             sendStatusToScheduler();
-            System.out.println("[Drone " + droneId + "] DROPPING_AGENT at Zone " + zoneId);
+            log("DROPPING_AGENT at Zone " + zoneId);
 
+            // ===== FAULT: NOZZLE_STUCK — nozzle jams during drop (HARD FAULT) =====
+            if (fault == FaultType.NOZZLE_STUCK) {
+                Thread.sleep(nozzleOpenMs()); // nozzle tries to open but jams
+                log("FAULT: Nozzle jammed at Zone " + zoneId + " - HARD FAULT, shutting down");
+                setState(DroneState.FAULT_NOZZLE);
+                sendStatusToScheduler();
+                sendFaultToScheduler(FaultType.NOZZLE_STUCK, zoneId);
+
+                setState(DroneState.OFFLINE); // Hard fault: drone goes permanently offline
+                sendStatusToScheduler();
+                running = false;
+                return;
+            }
+
+            // Normal drop
             Thread.sleep(nozzleOpenMs() + dropAgentMs(litersNeeded));
-
             currentAgent -= litersNeeded;
 
             // Send result to scheduler
@@ -166,12 +225,14 @@ public class DroneSubsystem implements Runnable {
 
             setState(DroneState.IDLE);
             sendStatusToScheduler();
-            System.out.println("[Drone " + droneId + "] IDLE (task complete, remaining=" + currentAgent + "L)");
+            log("IDLE (task complete, remaining=" + currentAgent + "L)");
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
+
+    // ==================== TRAVEL WITH REDIRECT POLLING ====================
 
     private void travelWithRedirectPolling(int totalMs) throws InterruptedException {
         int elapsed = 0;
@@ -192,19 +253,18 @@ public class DroneSubsystem implements Runnable {
                         if (cmdType.equals("REDIRECT")) {
                             redirectZoneId = UDPHelper.parseDroneCommandZoneId(msg);
                             redirectSeverity = UDPHelper.parseDroneCommandSeverity(msg);
-                            System.out.println("[Drone " + droneId + "] Redirect received during travel: Zone " + redirectZoneId);
+                            log("Redirect received during travel: Zone " + redirectZoneId);
                         } else if (cmdType.equals("RETURN_BASE")) {
-                            // Queue this for after current task
-                            System.out.println("[Drone " + droneId + "] RETURN_BASE received during travel (will execute after task)");
+                            log("RETURN_BASE received during travel (will execute after task)");
                         } else if (cmdType.equals("SHUTDOWN")) {
-                            System.out.println("[Drone " + droneId + "] SHUTDOWN received during travel");
+                            log("SHUTDOWN received during travel");
                             setState(DroneState.SHUTDOWN);
                             running = false;
                             return;
                         }
                     }
                 } catch (SocketTimeoutException e) {
-                    // Normal — no message during this poll interval
+                    // Normal - no message during this poll interval
                 } catch (IOException e) {
                     if (running) System.err.println("[Drone " + droneId + "] Poll error: " + e.getMessage());
                 }
@@ -219,23 +279,25 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    // ==================== REDIRECT HANDLING ====================
+
     private void handleRedirect(String msg) {
-        // If we're EN_ROUTE, update the redirect target
         if (state == DroneState.EN_ROUTE) {
             redirectZoneId = UDPHelper.parseDroneCommandZoneId(msg);
             redirectSeverity = UDPHelper.parseDroneCommandSeverity(msg);
-            System.out.println("[Drone " + droneId + "] Redirect received: Zone " + redirectZoneId);
+            log("Redirect received: Zone " + redirectZoneId);
         } else {
-            // If not en-route, treat as a new task
             handleTask(msg);
         }
     }
+
+    // ==================== RETURN TO BASE ====================
 
     private void doReturnToBase() {
         try {
             setState(DroneState.RETURNING_BASE);
             sendStatusToScheduler();
-            System.out.println("[Drone " + droneId + "] RETURNING_BASE");
+            log("RETURNING_BASE");
             Thread.sleep(returnTimeMs());
 
             // Refill at base
@@ -245,14 +307,20 @@ public class DroneSubsystem implements Runnable {
 
             setState(DroneState.IDLE);
             sendStatusToScheduler();
-            System.out.println("[Drone " + droneId + "] IDLE at base (refilled)");
+            log("IDLE at base (refilled)");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
+    // ==================== HELPERS ====================
+
     private void setState(DroneState newState) {
         this.state = newState;
+    }
+
+    private void log(String message) {
+        System.out.println("[" + UDPHelper.timestamp() + "] [Drone " + droneId + "] " + message);
     }
 
     // --- Timing helpers (fixed 800ms as per Iteration 2) ---

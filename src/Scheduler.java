@@ -1,4 +1,4 @@
-// Scheduler.java  (Iteration 3: UDP, multi-drone scheduling, load balancing, redirect)
+// Scheduler.java  (Iteration 4: UDP, multi-drone scheduling, load balancing, redirect, fault handling)
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -20,6 +20,11 @@ public class Scheduler implements Runnable {
     private InetAddress fireSubsystemAddress;
     private volatile boolean running = true;
 
+    // Iteration 4: Fault detection timeout thresholds
+    private static final long TRAVEL_TIMEOUT_MS = 5000;   // 2x travel + buffer
+    private static final long DROP_TIMEOUT_MS   = 5000;   // 2x max drop + buffer
+    private static final long FAULT_MONITOR_INTERVAL_MS = 1000; // check every 1s
+
     public Scheduler(List<Zone> zones) {
         this.zones = zones;
     }
@@ -32,29 +37,32 @@ public class Scheduler implements Runnable {
             droneListenSocket = new DatagramSocket(UDPHelper.DRONE_TO_SCHEDULER_PORT);
             sendSocket = new DatagramSocket();
 
-            System.out.println("[Scheduler] Running (Iteration 3, multi-drone UDP scheduling)");
-            System.out.println("[Scheduler] Listening for fire events on port " + UDPHelper.FIRE_TO_SCHEDULER_PORT);
-            System.out.println("[Scheduler] Listening for drone messages on port " + UDPHelper.DRONE_TO_SCHEDULER_PORT);
+            log("Running (Iteration 4, multi-drone UDP scheduling with fault handling)");
+            log("Listening for fire events on port " + UDPHelper.FIRE_TO_SCHEDULER_PORT);
+            log("Listening for drone messages on port " + UDPHelper.DRONE_TO_SCHEDULER_PORT);
 
             // Start listener threads
             Thread fireListener = new Thread(this::listenForFireEvents, "Scheduler-FireListener");
             Thread droneListener = new Thread(this::listenForDroneMessages, "Scheduler-DroneListener");
             Thread dispatcher = new Thread(this::dispatchLoop, "Scheduler-Dispatcher");
+            Thread faultMonitor = new Thread(this::faultMonitorLoop, "Scheduler-FaultMonitor");
 
             fireListener.start();
             droneListener.start();
             dispatcher.start();
+            faultMonitor.start();
 
             fireListener.join();
             droneListener.join();
             dispatcher.join();
+            faultMonitor.join();
 
         } catch (IOException | InterruptedException e) {
             System.err.println("[Scheduler] Error: " + e.getMessage());
         } finally {
             closeSockets();
         }
-        System.out.println("[Scheduler] Stopped.");
+        log("Stopped.");
     }
 
     // ==================== FIRE EVENT LISTENER ====================
@@ -76,7 +84,7 @@ public class Scheduler implements Runnable {
                         // GUI update
                         GuiModel.get().addActiveFire(event.getZoneId(), event.getSeverity());
 
-                        System.out.println("[Scheduler] Received fire event: " + event);
+                        log("Received fire event: " + event);
 
                         // Check if any en-route drone should be redirected
                         checkForRedirect(event);
@@ -84,7 +92,7 @@ public class Scheduler implements Runnable {
                         pendingEvents.notifyAll();
                     }
                 } else if (type.equals(UDPHelper.MSG_SHUTDOWN)) {
-                    System.out.println("[Scheduler] Received shutdown from fire subsystem.");
+                    log("Received shutdown from fire subsystem.");
                     shutdown();
                 }
             } catch (IOException e) {
@@ -111,8 +119,11 @@ public class Scheduler implements Runnable {
                     case UDPHelper.MSG_DRONE_RESULT:
                         handleDroneResult(msg);
                         break;
+                    case UDPHelper.MSG_DRONE_FAULT:
+                        handleDroneFault(msg);
+                        break;
                     default:
-                        System.out.println("[Scheduler] Unknown drone message: " + type);
+                        log("Unknown drone message: " + type);
                 }
             } catch (IOException e) {
                 if (running) System.err.println("[Scheduler] Drone listener error: " + e.getMessage());
@@ -166,7 +177,7 @@ public class Scheduler implements Runnable {
         // GUI update
         GuiModel.get().setDroneState(droneId, DroneState.IDLE);
 
-        System.out.println("[Scheduler] Drone " + droneId + " registered: capacity=" + capacity
+        log("Drone " + droneId + " registered: capacity=" + capacity
                 + " pos=(" + x + "," + y + ") listenPort=" + listenPort);
 
         // Try to dispatch pending events now that a new drone is available
@@ -222,7 +233,7 @@ public class Scheduler implements Runnable {
             GuiModel.get().removeActiveFire(result.getZoneId());
         }
 
-        System.out.println("[Scheduler] Drone " + droneId + " completed Zone " + result.getZoneId()
+        log("Drone " + droneId + " completed Zone " + result.getZoneId()
                 + " (completed=" + result.isTaskCompleted() + ")");
 
         // If drone has insufficient agent for even a LOW fire, send it back to base to refill
@@ -232,7 +243,7 @@ public class Scheduler implements Runnable {
 
         // Handle drop failure: re-queue the event
         if (!result.isTaskCompleted()) {
-            System.out.println("[Scheduler] Drop failure at Zone " + result.getZoneId() + " — re-queuing.");
+            log("Drop failure at Zone " + result.getZoneId() + " - re-queuing.");
             // Re-create the fire event from the zone info (use HIGH as default for re-queue)
             FireEvent requeue = new FireEvent("REQUEUE", result.getZoneId(),
                     FireEvent.EventType.FIRE_DETECTED,
@@ -265,7 +276,7 @@ public class Scheduler implements Runnable {
         double bestScore = Double.MAX_VALUE;
 
         for (DroneInfo drone : droneRegistry.values()) {
-            if (!drone.isIdle()) continue;
+            if (!drone.isAvailable()) continue;  // Iteration 4: skip offline drones
             if (!drone.hasEnoughAgent(litersNeeded)) continue;
 
             // Score = distance to zone center (lower is better), with task-count tiebreaker
@@ -299,15 +310,18 @@ public class Scheduler implements Runnable {
         GuiModel.get().setDroneState(droneId, DroneState.EN_ROUTE);
         GuiModel.get().setDroneAssignment(droneId, event.getZoneId());
 
+        // Iteration 4: include fault type in command, record dispatch timestamp
+        drone.setDispatchTimestamp(System.currentTimeMillis());
+        String faultStr = event.getFaultType() != null ? event.getFaultType().name() : "NONE";
         String cmdMsg = UDPHelper.buildDroneCommandMessage(droneId, "TASK",
-                event.getZoneId(), event.getSeverity().name());
+                event.getZoneId(), event.getSeverity().name(), faultStr);
 
         try {
             InetAddress droneAddr = droneAddresses.get(droneId);
             if (droneAddr != null) {
                 UDPHelper.sendMessage(sendSocket, droneAddr, drone.getListenPort(), cmdMsg);
-                System.out.println("[Scheduler] Dispatched Drone " + droneId + " to Zone " + event.getZoneId()
-                        + " (severity=" + event.getSeverity() + ")");
+                log("Dispatched Drone " + droneId + " to Zone " + event.getZoneId()
+                        + " (severity=" + event.getSeverity() + ", fault=" + faultStr + ")");
             }
         } catch (IOException e) {
             System.err.println("[Scheduler] Failed to send command to Drone " + droneId + ": " + e.getMessage());
@@ -345,7 +359,7 @@ public class Scheduler implements Runnable {
 
                 if (distToNew < distToAssigned) {
                     // Redirect: swap assignments
-                    System.out.println("[Scheduler] Redirecting Drone " + drone.getDroneId()
+                    log("Redirecting Drone " + drone.getDroneId()
                             + " from Zone " + drone.getAssignedZoneId() + " to Zone " + newEvent.getZoneId());
 
                     // Re-queue the old assignment
@@ -392,7 +406,7 @@ public class Scheduler implements Runnable {
             InetAddress droneAddr = droneAddresses.get(droneId);
             if (droneAddr != null) {
                 UDPHelper.sendMessage(sendSocket, droneAddr, drone.getListenPort(), cmdMsg);
-                System.out.println("[Scheduler] Sent RETURN_BASE to Drone " + droneId + " (low agent: " + drone.getRemainingAgent() + "L)");
+                log("Sent RETURN_BASE to Drone " + droneId + " (low agent: " + drone.getRemainingAgent() + "L)");
             }
         } catch (IOException e) {
             System.err.println("[Scheduler] Failed to send RETURN_BASE to Drone " + droneId + ": " + e.getMessage());
@@ -450,7 +464,118 @@ public class Scheduler implements Runnable {
         if (sendSocket != null && !sendSocket.isClosed()) sendSocket.close();
     }
 
+    // ==================== FAULT HANDLING (Iteration 4) ====================
+
+    private void handleDroneFault(String msg) {
+        int droneId = UDPHelper.parseDroneFaultDroneId(msg);
+        String faultStr = UDPHelper.parseDroneFaultType(msg);
+        int zoneId = UDPHelper.parseDroneFaultZoneId(msg);
+        FaultType fault = FaultType.fromString(faultStr);
+
+        DroneInfo info = droneRegistry.get(droneId);
+        if (info == null) return;
+
+        info.setCurrentFault(fault);
+        info.incrementFaultCount();
+        log("FAULT DETECTED: Drone " + droneId + " reported " + fault + " at Zone " + zoneId);
+
+        // GUI update for fault
+        GuiModel.get().setDroneFault(droneId, fault);
+
+        if (fault.isHardFault()) {
+            // Hard fault: mark drone permanently offline, re-queue event
+            info.setPermanentlyOffline(true);
+            info.setState(DroneState.OFFLINE);
+            GuiModel.get().setDroneState(droneId, DroneState.OFFLINE);
+            log("Drone " + droneId + " PERMANENTLY OFFLINE due to " + fault);
+
+            // Re-queue the fire event for another drone
+            requeueZone(zoneId, info.getAssignedSeverity());
+            info.clearAssignment();
+
+        } else if (fault.isSoftFault()) {
+            // Soft fault: drone will self-recover, re-queue the event
+            log("Drone " + droneId + " soft fault (" + fault + ") — will self-recover, re-queuing Zone " + zoneId);
+
+            requeueZone(zoneId, info.getAssignedSeverity());
+            info.clearAssignment();
+        }
+    }
+
+    private void requeueZone(int zoneId, String severity) {
+        FireEvent.Severity sev;
+        try {
+            sev = (severity != null) ? FireEvent.Severity.valueOf(severity) : FireEvent.Severity.HIGH;
+        } catch (IllegalArgumentException e) {
+            sev = FireEvent.Severity.HIGH;
+        }
+        FireEvent requeue = new FireEvent("FAULT_REQUEUE", zoneId,
+                FireEvent.EventType.FIRE_DETECTED, sev);
+        synchronized (pendingEvents) {
+            pendingEvents.add(requeue);
+            GuiModel.get().addActiveFire(zoneId, sev);
+            pendingEvents.notifyAll();
+        }
+        log("Re-queued Zone " + zoneId + " (severity=" + sev + ") due to fault");
+    }
+
+    // ==================== FAULT MONITOR THREAD ====================
+
+    private void faultMonitorLoop() {
+        while (running) {
+            try {
+                Thread.sleep(FAULT_MONITOR_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            long now = System.currentTimeMillis();
+            for (DroneInfo drone : droneRegistry.values()) {
+                if (drone.isPermanentlyOffline()) continue;
+                if (drone.getDispatchTimestamp() == 0) continue;
+
+                long elapsed = now - drone.getDispatchTimestamp();
+                DroneState state = drone.getState();
+
+                // Timeout detection for EN_ROUTE drones
+                if (state == DroneState.EN_ROUTE && elapsed > TRAVEL_TIMEOUT_MS) {
+                    log("TIMEOUT: Drone " + drone.getDroneId() + " stuck EN_ROUTE for " + elapsed + "ms");
+                    handleTimeoutFault(drone);
+                }
+
+                // Timeout detection for DROPPING_AGENT drones
+                if (state == DroneState.DROPPING_AGENT && elapsed > (TRAVEL_TIMEOUT_MS + DROP_TIMEOUT_MS)) {
+                    log("TIMEOUT: Drone " + drone.getDroneId() + " stuck DROPPING_AGENT for " + elapsed + "ms");
+                    handleTimeoutFault(drone);
+                }
+            }
+        }
+    }
+
+    private void handleTimeoutFault(DroneInfo drone) {
+        int droneId = drone.getDroneId();
+        int zoneId = drone.getAssignedZoneId();
+
+        // If drone already reported a fault, don't double-handle
+        if (drone.getCurrentFault() != FaultType.NONE) return;
+
+        log("Timeout fault for Drone " + droneId + " — marking as potential fault, re-queuing Zone " + zoneId);
+        drone.setCurrentFault(FaultType.DRONE_STUCK);
+        drone.incrementFaultCount();
+        GuiModel.get().setDroneFault(droneId, FaultType.DRONE_STUCK);
+
+        // Re-queue the zone
+        if (zoneId > 0) {
+            requeueZone(zoneId, drone.getAssignedSeverity());
+        }
+    }
+
     // ==================== HELPERS ====================
+
+    private void log(String message) {
+        System.out.println("[" + UDPHelper.timestamp() + "] [Scheduler] " + message);
+    }
+
     private Zone findZone(int zoneId) {
         for (Zone z : zones) {
             if (z.getId() == zoneId) return z;

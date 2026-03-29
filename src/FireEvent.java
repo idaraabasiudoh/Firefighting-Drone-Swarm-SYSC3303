@@ -17,12 +17,18 @@ public class FireEvent {
     private int zoneId;
     private EventType eventType;
     private Severity severity;
+    private FaultType faultType;   // Iteration 4: fault to inject when drone handles this event
 
     public FireEvent(String time, int zoneId, EventType eventType, Severity severity) {
+        this(time, zoneId, eventType, severity, FaultType.NONE);
+    }
+
+    public FireEvent(String time, int zoneId, EventType eventType, Severity severity, FaultType faultType) {
         this.time = time;
         this.zoneId = zoneId;
         this.eventType = eventType;
         this.severity = severity;
+        this.faultType = faultType;
     }
 
     // -------- Getters --------
@@ -43,6 +49,10 @@ public class FireEvent {
         return severity;
     }
 
+    public FaultType getFaultType() {
+        return faultType;
+    }
+
     // -------- Setters --------
 
     public void setTime(String time) {
@@ -59,6 +69,10 @@ public class FireEvent {
 
     public void setSeverity(Severity severity) {
         this.severity = severity;
+    }
+
+    public void setFaultType(FaultType faultType) {
+        this.faultType = faultType;
     }
 
     // -------- Domain Logic --------
@@ -86,12 +100,13 @@ public class FireEvent {
         return zoneId == other.zoneId
                 && Objects.equals(time, other.time)
                 && eventType == other.eventType
-                && severity == other.severity;
+                && severity == other.severity
+                && faultType == other.faultType;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(time, zoneId, eventType, severity);
+        return Objects.hash(time, zoneId, eventType, severity, faultType);
     }
 
     @Override
@@ -102,6 +117,7 @@ public class FireEvent {
                 ", eventType=" + eventType +
                 ", severity=" + severity +
                 ", litersNeeded=" + getLitersNeeded() +
+                ", fault=" + faultType +
                 '}';
     }
 }

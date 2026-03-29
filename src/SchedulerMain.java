@@ -27,7 +27,7 @@ public class SchedulerMain {
             final List<Zone> guiZones = zones;
             SwingUtilities.invokeLater(() -> {
                 try {
-                    JFrame frame = new JFrame("Firefighting Drone Swarm - Iteration 3");
+                    JFrame frame = new JFrame("Firefighting Drone Swarm - Iteration 4");
                     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
                     MapPanel panel = new MapPanel(guiZones);

@@ -1,4 +1,4 @@
-// Thread-safe shared model that the Scheduler updates and the GUI reads (Iteration 3: multi-drone)
+// Thread-safe shared model that the Scheduler updates and the GUI reads (Iteration 4: multi-drone + faults)
 import java.util.*;
 
 public class GuiModel {
@@ -7,6 +7,9 @@ public class GuiModel {
     // Multi-drone state tracking
     private final Map<Integer, DroneState> droneStates = new HashMap<>();
     private final Map<Integer, Integer> droneAssignments = new HashMap<>(); // droneId -> zoneId
+
+    // Iteration 4: Drone fault tracking
+    private final Map<Integer, FaultType> droneFaults = new HashMap<>(); // droneId -> current fault
 
     // Active fires with severity
     private final Map<Integer, FireEvent.Severity> activeFireZones = new HashMap<>(); // zoneId -> severity
@@ -26,6 +29,23 @@ public class GuiModel {
 
     public synchronized Map<Integer, DroneState> snapshotDroneStates() {
         return Collections.unmodifiableMap(new HashMap<>(droneStates));
+    }
+
+    // -------- Drone Faults (Iteration 4) --------
+    public synchronized void setDroneFault(int droneId, FaultType fault) {
+        if (fault == FaultType.NONE) {
+            droneFaults.remove(droneId);
+        } else {
+            droneFaults.put(droneId, fault);
+        }
+    }
+
+    public synchronized FaultType getDroneFault(int droneId) {
+        return droneFaults.getOrDefault(droneId, FaultType.NONE);
+    }
+
+    public synchronized Map<Integer, FaultType> snapshotDroneFaults() {
+        return Collections.unmodifiableMap(new HashMap<>(droneFaults));
     }
 
     // -------- Drone Assignments --------

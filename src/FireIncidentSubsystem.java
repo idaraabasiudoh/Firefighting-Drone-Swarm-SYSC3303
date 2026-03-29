@@ -91,9 +91,14 @@ public class FireIncidentSubsystem implements Runnable {
 
     public static FireEvent parseLineToFireEvent(String line) {
         String[] p = line.split(",");
-        return new FireEvent(p[0].trim(), Integer.parseInt(p[1].trim()), 
-                            FireEvent.EventType.valueOf(p[2].trim().toUpperCase()), 
-                            FireEvent.Severity.valueOf(p[3].trim().toUpperCase()));
+        FireEvent event = new FireEvent(p[0].trim(), Integer.parseInt(p[1].trim()),
+                FireEvent.EventType.valueOf(p[2].trim().toUpperCase()),
+                FireEvent.Severity.valueOf(p[3].trim().toUpperCase()));
+        // Iteration 4: parse optional fault column
+        if (p.length > 4) {
+            event.setFaultType(FaultType.fromString(p[4].trim()));
+        }
+        return event;
     }
 
     public void shutdown() {

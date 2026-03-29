@@ -95,11 +95,71 @@ public class DroneSubsystemTest {
 
     @Test
     void testDroneStateEnum() {
-        assertEquals(5, DroneState.values().length);
+        // Iteration 4: 9 states (added FAULT_STUCK, FAULT_NOZZLE, FAULT_SENSOR, OFFLINE)
+        assertEquals(9, DroneState.values().length);
         assertEquals(DroneState.IDLE, DroneState.valueOf("IDLE"));
         assertEquals(DroneState.EN_ROUTE, DroneState.valueOf("EN_ROUTE"));
         assertEquals(DroneState.DROPPING_AGENT, DroneState.valueOf("DROPPING_AGENT"));
         assertEquals(DroneState.RETURNING_BASE, DroneState.valueOf("RETURNING_BASE"));
+        assertEquals(DroneState.FAULT_STUCK, DroneState.valueOf("FAULT_STUCK"));
+        assertEquals(DroneState.FAULT_NOZZLE, DroneState.valueOf("FAULT_NOZZLE"));
+        assertEquals(DroneState.FAULT_SENSOR, DroneState.valueOf("FAULT_SENSOR"));
+        assertEquals(DroneState.OFFLINE, DroneState.valueOf("OFFLINE"));
         assertEquals(DroneState.SHUTDOWN, DroneState.valueOf("SHUTDOWN"));
+    }
+
+    // ==================== Iteration 4: Fault Type Tests ====================
+
+    @Test
+    void testFaultTypeEnum() {
+        assertEquals(4, FaultType.values().length);
+        assertEquals(FaultType.NONE, FaultType.valueOf("NONE"));
+        assertEquals(FaultType.DRONE_STUCK, FaultType.valueOf("DRONE_STUCK"));
+        assertEquals(FaultType.NOZZLE_STUCK, FaultType.valueOf("NOZZLE_STUCK"));
+        assertEquals(FaultType.SENSOR_FAIL, FaultType.valueOf("SENSOR_FAIL"));
+    }
+
+    @Test
+    void testFaultTypeHardSoft() {
+        assertFalse(FaultType.NONE.isHardFault());
+        assertFalse(FaultType.NONE.isSoftFault());
+
+        assertFalse(FaultType.DRONE_STUCK.isHardFault());
+        assertTrue(FaultType.DRONE_STUCK.isSoftFault());
+
+        assertTrue(FaultType.NOZZLE_STUCK.isHardFault());
+        assertFalse(FaultType.NOZZLE_STUCK.isSoftFault());
+
+        assertFalse(FaultType.SENSOR_FAIL.isHardFault());
+        assertTrue(FaultType.SENSOR_FAIL.isSoftFault());
+    }
+
+    @Test
+    void testFaultTypeFromString() {
+        assertEquals(FaultType.NONE, FaultType.fromString(null));
+        assertEquals(FaultType.NONE, FaultType.fromString(""));
+        assertEquals(FaultType.NONE, FaultType.fromString("  "));
+        assertEquals(FaultType.NONE, FaultType.fromString("INVALID"));
+        assertEquals(FaultType.DRONE_STUCK, FaultType.fromString("DRONE_STUCK"));
+        assertEquals(FaultType.DRONE_STUCK, FaultType.fromString("drone_stuck"));
+        assertEquals(FaultType.NOZZLE_STUCK, FaultType.fromString("NOZZLE_STUCK"));
+        assertEquals(FaultType.SENSOR_FAIL, FaultType.fromString("sensor_fail"));
+    }
+
+    @Test
+    void testFireEventWithFaultType() {
+        FireEvent event = new FireEvent("14:00:00", 3,
+                FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.HIGH, FaultType.DRONE_STUCK);
+        assertEquals(FaultType.DRONE_STUCK, event.getFaultType());
+
+        event.setFaultType(FaultType.NOZZLE_STUCK);
+        assertEquals(FaultType.NOZZLE_STUCK, event.getFaultType());
+    }
+
+    @Test
+    void testFireEventDefaultFaultType() {
+        FireEvent event = new FireEvent("14:00:00", 3,
+                FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.HIGH);
+        assertEquals(FaultType.NONE, event.getFaultType());
     }
 }

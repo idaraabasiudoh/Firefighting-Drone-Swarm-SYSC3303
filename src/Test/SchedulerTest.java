@@ -159,4 +159,129 @@ public class SchedulerTest {
         info.refill();
         assertEquals(30.0, info.getRemainingAgent());
     }
+
+    // ==================== Iteration 4: Fault Handling Tests ====================
+
+    @Test
+    void testFindBestDroneSkipsOfflineDrone() {
+        Scheduler scheduler = new Scheduler(zones);
+
+        DroneInfo drone1 = new DroneInfo(1, 30.0, 0, 0, 6001);
+        drone1.setPermanentlyOffline(true);
+        DroneInfo drone2 = new DroneInfo(2, 30.0, 500, 500, 6002);
+        scheduler.getDroneRegistry().put(1, drone1);
+        scheduler.getDroneRegistry().put(2, drone2);
+
+        FireEvent event = new FireEvent("14:00:00", 1, FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.LOW);
+
+        DroneInfo best = scheduler.findBestDrone(event);
+        assertNotNull(best);
+        assertEquals(2, best.getDroneId());
+    }
+
+    @Test
+    void testFindBestDroneReturnsNullWhenAllOffline() {
+        Scheduler scheduler = new Scheduler(zones);
+
+        DroneInfo drone1 = new DroneInfo(1, 30.0, 0, 0, 6001);
+        drone1.setPermanentlyOffline(true);
+        scheduler.getDroneRegistry().put(1, drone1);
+
+        FireEvent event = new FireEvent("14:00:00", 1, FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.LOW);
+
+        DroneInfo best = scheduler.findBestDrone(event);
+        assertNull(best);
+    }
+
+    @Test
+    void testDroneInfoFaultTracking() {
+        DroneInfo info = new DroneInfo(1, 30.0, 0, 0, 6001);
+
+        assertEquals(FaultType.NONE, info.getCurrentFault());
+        assertFalse(info.isPermanentlyOffline());
+        assertEquals(0, info.getFaultCount());
+        assertTrue(info.isAvailable());
+
+        // Set soft fault
+        info.setCurrentFault(FaultType.DRONE_STUCK);
+        info.incrementFaultCount();
+        assertEquals(FaultType.DRONE_STUCK, info.getCurrentFault());
+        assertEquals(1, info.getFaultCount());
+        assertTrue(info.isAvailable()); // soft fault drone is still available
+
+        // Set hard fault -> permanently offline
+        info.setCurrentFault(FaultType.NOZZLE_STUCK);
+        info.setPermanentlyOffline(true);
+        info.incrementFaultCount();
+        assertEquals(FaultType.NOZZLE_STUCK, info.getCurrentFault());
+        assertTrue(info.isPermanentlyOffline());
+        assertFalse(info.isAvailable());
+        assertEquals(2, info.getFaultCount());
+    }
+
+    @Test
+    void testDroneInfoDispatchTimestamp() {
+        DroneInfo info = new DroneInfo(1, 30.0, 0, 0, 6001);
+
+        assertEquals(0, info.getDispatchTimestamp());
+
+        long now = System.currentTimeMillis();
+        info.setDispatchTimestamp(now);
+        assertEquals(now, info.getDispatchTimestamp());
+    }
+
+    @Test
+    void testUDPHelperFaultMessages() {
+        // Test DRONE_FAULT message build/parse
+        String faultMsg = UDPHelper.buildDroneFaultMessage(1, "DRONE_STUCK", 3);
+        assertEquals("DRONE_FAULT", UDPHelper.getMessageType(faultMsg));
+        assertEquals(1, UDPHelper.parseDroneFaultDroneId(faultMsg));
+        assertEquals("DRONE_STUCK", UDPHelper.parseDroneFaultType(faultMsg));
+        assertEquals(3, UDPHelper.parseDroneFaultZoneId(faultMsg));
+    }
+
+    @Test
+    void testUDPHelperDroneCommandWithFault() {
+        String cmd = UDPHelper.buildDroneCommandMessage(1, "TASK", 3, "HIGH", "NOZZLE_STUCK");
+        assertEquals("DRONE_COMMAND", UDPHelper.getMessageType(cmd));
+        assertEquals(1, UDPHelper.parseDroneCommandId(cmd));
+        assertEquals("TASK", UDPHelper.parseDroneCommandType(cmd));
+        assertEquals(3, UDPHelper.parseDroneCommandZoneId(cmd));
+        assertEquals("HIGH", UDPHelper.parseDroneCommandSeverity(cmd));
+        assertEquals("NOZZLE_STUCK", UDPHelper.parseDroneCommandFault(cmd));
+    }
+
+    @Test
+    void testUDPHelperDroneCommandDefaultFault() {
+        String cmd = UDPHelper.buildDroneCommandMessage(1, "TASK", 3, "LOW");
+        assertEquals("NONE", UDPHelper.parseDroneCommandFault(cmd));
+    }
+
+    @Test
+    void testUDPHelperFireEventWithFault() {
+        String msg = UDPHelper.buildFireEventMessage("14:00:00", 3, "FIRE_DETECTED", "HIGH", "SENSOR_FAIL");
+        FireEvent event = UDPHelper.parseFireEvent(msg);
+        assertEquals(3, event.getZoneId());
+        assertEquals(FireEvent.Severity.HIGH, event.getSeverity());
+        assertEquals(FaultType.SENSOR_FAIL, event.getFaultType());
+    }
+
+    @Test
+    void testFireIncidentParseLineWithFault() {
+        String line = "14:03:20,1,FIRE_DETECTED,Low,DRONE_STUCK";
+        FireEvent event = FireIncidentSubsystem.parseLineToFireEvent(line);
+        assertNotNull(event);
+        assertEquals(1, event.getZoneId());
+        assertEquals(FireEvent.Severity.LOW, event.getSeverity());
+        assertEquals(FaultType.DRONE_STUCK, event.getFaultType());
+    }
+
+    @Test
+    void testFireIncidentParseLineWithoutFault() {
+        String line = "14:03:15,3,FIRE_DETECTED,High";
+        FireEvent event = FireIncidentSubsystem.parseLineToFireEvent(line);
+        assertNotNull(event);
+        assertEquals(3, event.getZoneId());
+        assertEquals(FaultType.NONE, event.getFaultType());
+    }
 }

@@ -1,3 +1,12 @@
+package test;
+
+import drone.*;
+import fireincident.FireEvent;
+import fireincident.FireIncidentSubsystem;
+import gui.Zone;
+import network.UDPHelper;
+import scheduler.Scheduler;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

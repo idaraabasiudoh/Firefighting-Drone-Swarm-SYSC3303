@@ -1,6 +1,14 @@
 // Main.java  (Iteration 4: convenience launcher — starts all 3 subsystems in one JVM via UDP, fault handling)
 // For production, run SchedulerMain, DroneMain, and FireIncidentMain as separate processes.
 
+import drone.DroneSubsystem;
+import fireincident.FireIncidentSubsystem;
+import gui.MapPanel;
+import gui.Zone;
+import gui.ZoneParser;
+import network.UDPHelper;
+import scheduler.Scheduler;
+
 import javax.swing.*;
 import java.io.File;
 import java.net.InetAddress;

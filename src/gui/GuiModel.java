@@ -4,29 +4,27 @@ import drone.DroneState;
 import drone.FaultType;
 import fireincident.FireEvent;
 
-// Thread-safe shared model that the Scheduler updates and the GUI reads (Iteration 4: multi-drone + faults)
+import java.awt.Point;
 import java.util.*;
 
 public class GuiModel {
     private static final GuiModel INSTANCE = new GuiModel();
 
-    // Multi-drone state tracking
     private final Map<Integer, DroneState> droneStates = new HashMap<>();
-    private final Map<Integer, Integer> droneAssignments = new HashMap<>(); // droneId -> zoneId
-
-    // Iteration 4: Drone fault tracking
-    private final Map<Integer, FaultType> droneFaults = new HashMap<>(); // droneId -> current fault
-
-    // Active fires with severity
-    private final Map<Integer, FireEvent.Severity> activeFireZones = new HashMap<>(); // zoneId -> severity
+    private final Map<Integer, Integer> droneAssignments = new HashMap<>();
+    private final Map<Integer, FaultType> droneFaults = new HashMap<>();
+    private final Map<Integer, FireEvent.Severity> activeFireZones = new HashMap<>();
+    private final Map<Integer, Point> dronePositions = new HashMap<>();
+    private final Map<Integer, Double> fireIntensity = new HashMap<>();
 
     private GuiModel() {}
 
-    public static GuiModel get() { return INSTANCE; }
+    public static GuiModel get() {
+        return INSTANCE;
+    }
 
-    // -------- Drone State (per drone) --------
-    public synchronized void setDroneState(int droneId, DroneState s) {
-        droneStates.put(droneId, s);
+    public synchronized void setDroneState(int droneId, DroneState state) {
+        droneStates.put(droneId, state);
     }
 
     public synchronized DroneState getDroneState(int droneId) {
@@ -37,9 +35,20 @@ public class GuiModel {
         return Collections.unmodifiableMap(new HashMap<>(droneStates));
     }
 
-    // -------- Drone Faults (Iteration 4) --------
+    public synchronized void setDroneAssignment(int droneId, int zoneId) {
+        if (zoneId == -1) {
+            droneAssignments.remove(droneId);
+        } else {
+            droneAssignments.put(droneId, zoneId);
+        }
+    }
+
+    public synchronized Map<Integer, Integer> snapshotDroneAssignments() {
+        return Collections.unmodifiableMap(new HashMap<>(droneAssignments));
+    }
+
     public synchronized void setDroneFault(int droneId, FaultType fault) {
-        if (fault == FaultType.NONE) {
+        if (fault == null || fault == FaultType.NONE) {
             droneFaults.remove(droneId);
         } else {
             droneFaults.put(droneId, fault);
@@ -54,32 +63,18 @@ public class GuiModel {
         return Collections.unmodifiableMap(new HashMap<>(droneFaults));
     }
 
-    // -------- Drone Assignments --------
-    public synchronized void setDroneAssignment(int droneId, int zoneId) {
-        if (zoneId == -1) {
-            droneAssignments.remove(droneId);
-        } else {
-            droneAssignments.put(droneId, zoneId);
-        }
-    }
-
-    public synchronized Map<Integer, Integer> snapshotDroneAssignments() {
-        return Collections.unmodifiableMap(new HashMap<>(droneAssignments));
-    }
-
-    // -------- Active Fires with Severity --------
     public synchronized void addActiveFire(int zoneId, FireEvent.Severity severity) {
         activeFireZones.put(zoneId, severity);
+        fireIntensity.put(zoneId, 1.0);
     }
 
     public synchronized void removeActiveFire(int zoneId) {
         activeFireZones.remove(zoneId);
+        fireIntensity.remove(zoneId);
     }
 
-    public synchronized int getActiveFireCount() { return activeFireZones.size(); }
-
-    public synchronized Set<Integer> snapshotActiveFireZoneIds() {
-        return Collections.unmodifiableSet(new HashSet<>(activeFireZones.keySet()));
+    public synchronized int getActiveFireCount() {
+        return activeFireZones.size();
     }
 
     public synchronized Map<Integer, FireEvent.Severity> snapshotActiveFireZones() {
@@ -88,5 +83,39 @@ public class GuiModel {
 
     public synchronized FireEvent.Severity getFireSeverity(int zoneId) {
         return activeFireZones.get(zoneId);
+    }
+
+    public synchronized void setDronePosition(int droneId, int x, int y) {
+        dronePositions.put(droneId, new Point(x, y));
+    }
+
+    public synchronized Point getDronePosition(int droneId) {
+        Point p = dronePositions.get(droneId);
+        if (p == null) return new Point(0, 0);
+        return new Point(p);
+    }
+
+    public synchronized Map<Integer, Point> snapshotDronePositions() {
+        Map<Integer, Point> copy = new HashMap<>();
+        for (Map.Entry<Integer, Point> entry : dronePositions.entrySet()) {
+            copy.put(entry.getKey(), new Point(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(copy);
+    }
+
+    public synchronized void setFireIntensity(int zoneId, double intensity) {
+        if (intensity <= 0.0) {
+            fireIntensity.remove(zoneId);
+        } else {
+            fireIntensity.put(zoneId, Math.min(1.0, intensity));
+        }
+    }
+
+    public synchronized double getFireIntensity(int zoneId) {
+        return fireIntensity.getOrDefault(zoneId, 1.0);
+    }
+
+    public synchronized Map<Integer, Double> snapshotFireIntensity() {
+        return Collections.unmodifiableMap(new HashMap<>(fireIntensity));
     }
 }

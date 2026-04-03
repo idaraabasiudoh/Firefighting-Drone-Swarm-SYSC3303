@@ -4,39 +4,55 @@ import drone.DroneState;
 import drone.FaultType;
 import fireincident.FireEvent;
 
-// MapPanel.java  (Iteration 4: multi-drone display, severity color-coding, drone assignments, fault visualization)
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class MapPanel extends JPanel {
     private final List<Zone> zones;
     private final int scale = 2;
+    private BufferedImage droneImage;
+    private BufferedImage fireImage;
 
-    // Colors for severity
-    private static final Color COLOR_LOW = new Color(76, 175, 80);        // green
-    private static final Color COLOR_MODERATE = new Color(255, 152, 0);    // orange
-    private static final Color COLOR_HIGH = new Color(244, 67, 54);        // red
+    private static final Color COLOR_LOW = new Color(76, 175, 80);
+    private static final Color COLOR_MODERATE = new Color(255, 152, 0);
+    private static final Color COLOR_HIGH = new Color(244, 67, 54);
 
-    // Colors for drones
     private static final Color[] DRONE_COLORS = {
-            new Color(33, 150, 243),   // blue
-            new Color(156, 39, 176),   // purple
-            new Color(0, 150, 136),    // teal
-            new Color(255, 87, 34),    // deep orange
+            new Color(33, 150, 243),
+            new Color(156, 39, 176),
+            new Color(0, 150, 136),
+            new Color(255, 87, 34)
     };
 
-    // Iteration 4: Fault colors
-    private static final Color COLOR_FAULT_STUCK = new Color(255, 235, 59);   // yellow
-    private static final Color COLOR_FAULT_NOZZLE = new Color(183, 28, 28);   // dark red
-    private static final Color COLOR_FAULT_SENSOR = new Color(255, 152, 0);   // orange
-    private static final Color COLOR_OFFLINE = new Color(117, 117, 117);      // grey
+    private static final Color COLOR_FAULT_STUCK = new Color(255, 235, 59);
+    private static final Color COLOR_FAULT_NOZZLE = new Color(183, 28, 28);
+    private static final Color COLOR_FAULT_SENSOR = new Color(255, 152, 0);
+    private static final Color COLOR_OFFLINE = new Color(117, 117, 117);
 
     public MapPanel(List<Zone> zones) {
         this.zones = zones;
         setPreferredSize(new Dimension(900, 750));
         setDoubleBuffered(true);
+
+        try {
+            droneImage = ImageIO.read(new File("src/gui/drone.png"));
+        } catch (IOException e) {
+            System.out.println("Could not load drone image, using dots instead.");
+            droneImage = null;
+        }
+
+        try {
+            fireImage = ImageIO.read(new File("src/gui/fire.png"));
+        } catch (IOException e) {
+            System.out.println("Could not load fire image, using circles instead.");
+            fireImage = null;
+        }
     }
 
     @Override
@@ -45,17 +61,16 @@ public class MapPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Snapshots from GuiModel
         Map<Integer, DroneState> droneStates = GuiModel.get().snapshotDroneStates();
         Map<Integer, Integer> droneAssignments = GuiModel.get().snapshotDroneAssignments();
         Map<Integer, FireEvent.Severity> activeFires = GuiModel.get().snapshotActiveFireZones();
         Map<Integer, FaultType> droneFaults = GuiModel.get().snapshotDroneFaults();
+        Map<Integer, Point> dronePositions = GuiModel.get().snapshotDronePositions();
 
-        // ---- UI header: drone statuses ----
         int headerY = 20;
         g.setColor(Color.BLACK);
         g.setFont(new Font("SansSerif", Font.BOLD, 13));
-        g.drawString("Firefighting Drone Swarm - Iteration 4 (Fault Handling)", 20, headerY);
+        g.drawString("Firefighting Drone Swarm", 20, headerY);
         headerY += 20;
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 12));
@@ -69,10 +84,12 @@ public class MapPanel extends JPanel {
                 int droneId = entry.getKey();
                 DroneState state = entry.getValue();
                 Integer assignedZone = droneAssignments.get(droneId);
-                Color droneColor = getDroneColor(droneId);
-
                 FaultType fault = droneFaults.getOrDefault(droneId, FaultType.NONE);
-                Color labelColor = (fault != FaultType.NONE) ? getFaultColor(fault, state) : droneColor;
+
+                Color labelColor = (fault != FaultType.NONE)
+                        ? getFaultColor(fault, state)
+                        : getDroneColor(droneId);
+
                 g.setColor(labelColor);
                 String label = "Drone " + droneId + ": " + state;
                 if (fault != FaultType.NONE) {
@@ -80,21 +97,21 @@ public class MapPanel extends JPanel {
                 }
                 if (assignedZone != null) {
                     label += " -> Zone " + assignedZone;
-                    FireEvent.Severity sev = activeFires.get(assignedZone);
-                    if (sev != null) label += " (" + sev + ")";
                 }
                 g.drawString(label, 20, headerY);
                 headerY += 16;
             }
         }
 
-        // ---- background grid ----
         g.setColor(new Color(230, 230, 230));
-        int offsetY = 120; // shift map down below header
-        for (int x = 0; x < getWidth(); x += 25) g.drawLine(x, offsetY, x, getHeight());
-        for (int y = offsetY; y < getHeight(); y += 25) g.drawLine(0, y, getWidth(), y);
+        int offsetY = 120;
+        for (int x = 0; x < getWidth(); x += 25) {
+            g.drawLine(x, offsetY, x, getHeight());
+        }
+        for (int y = offsetY; y < getHeight(); y += 25) {
+            g.drawLine(0, y, getWidth(), y);
+        }
 
-        // ---- draw zones ----
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         for (Zone z : zones) {
             int x = Math.min(z.getX1(), z.getX2()) / scale;
@@ -106,13 +123,11 @@ public class MapPanel extends JPanel {
             g.drawRect(x, y, w, h);
             g.drawString("Z(" + z.getId() + ")", x + 5, y + 15);
 
-            // center dot
             int cx = z.centerX() / scale;
             int cy = z.centerY() / scale + offsetY;
             g.fillOval(cx - 2, cy - 2, 4, 4);
         }
 
-        // ---- draw active fires with severity color ----
         for (Map.Entry<Integer, FireEvent.Severity> entry : activeFires.entrySet()) {
             int zoneId = entry.getKey();
             FireEvent.Severity severity = entry.getValue();
@@ -122,63 +137,72 @@ public class MapPanel extends JPanel {
             int cx = z.centerX() / scale;
             int cy = z.centerY() / scale + offsetY;
 
-            Color fireColor = getSeverityColor(severity);
-            g2.setColor(new Color(fireColor.getRed(), fireColor.getGreen(), fireColor.getBlue(), 120));
-            g2.fillOval(cx - 14, cy - 14, 28, 28);
-            g2.setColor(fireColor);
-            g2.setStroke(new BasicStroke(2));
-            g2.drawOval(cx - 14, cy - 14, 28, 28);
-            g2.setStroke(new BasicStroke(1));
+            double intensity = GuiModel.get().getFireIntensity(zoneId);
+            int size = Math.max(14, (int) (42 * intensity));
 
-            // Severity label
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
-            String sevLabel = severity.name().substring(0, 1);
-            g.drawString(sevLabel, cx - 3, cy + 4);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            if (fireImage != null) {
+                g.drawImage(fireImage, cx - size / 2, cy - size / 2, size, size, null);
+            } else {
+                Color fireColor = getSeverityColor(severity);
+                g2.setColor(new Color(fireColor.getRed(), fireColor.getGreen(), fireColor.getBlue(), 120));
+                g2.fillOval(cx - size / 2, cy - size / 2, size, size);
+                g2.setColor(fireColor);
+                g2.setStroke(new BasicStroke(2));
+                g2.drawOval(cx - size / 2, cy - size / 2, size, size);
+                g2.setStroke(new BasicStroke(1));
+
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("SansSerif", Font.BOLD, 10));
+                g.drawString(severity.name().substring(0, 1), cx - 3, cy + 4);
+                g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            }
         }
 
-        // ---- draw drone assignment lines ----
         for (Map.Entry<Integer, Integer> entry : droneAssignments.entrySet()) {
             int droneId = entry.getKey();
             int zoneId = entry.getValue();
             Zone z = findZone(zoneId);
             if (z == null) continue;
 
+            Point p = dronePositions.getOrDefault(droneId, new Point(0, 0));
+            int px = p.x / scale;
+            int py = p.y / scale + offsetY;
             int cx = z.centerX() / scale;
             int cy = z.centerY() / scale + offsetY;
 
-            Color droneColor = getDroneColor(droneId);
-            g2.setColor(droneColor);
+            g2.setColor(getDroneColor(droneId));
             g2.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
                     1.0f, new float[]{6, 4}, 0));
-
-            // Draw dashed line from base (0,0) to zone center
-            g2.drawLine(0, offsetY, cx, cy);
+            g2.drawLine(px, py, cx, cy);
             g2.setStroke(new BasicStroke(1));
+        }
 
-            // Drone marker at zone center
+        for (Map.Entry<Integer, DroneState> entry : droneStates.entrySet()) {
+            int droneId = entry.getKey();
+            DroneState state = entry.getValue();
+            Point p = dronePositions.getOrDefault(droneId, new Point(0, 0));
+
+            int px = p.x / scale;
+            int py = p.y / scale + offsetY;
+
             FaultType fault = droneFaults.getOrDefault(droneId, FaultType.NONE);
-            DroneState dState = droneStates.getOrDefault(droneId, DroneState.IDLE);
-            Color markerColor = (fault != FaultType.NONE) ? getFaultColor(fault, dState) : droneColor;
+            Color markerColor = (fault != FaultType.NONE)
+                    ? getFaultColor(fault, state)
+                    : getDroneColor(droneId);
 
-            g2.setColor(markerColor);
-            if (fault != FaultType.NONE) {
-                // Draw X marker for faulted drones
-                g2.setStroke(new BasicStroke(3));
-                g2.drawLine(cx - 8, cy - 8, cx + 8, cy + 8);
-                g2.drawLine(cx - 8, cy + 8, cx + 8, cy - 8);
-                g2.setStroke(new BasicStroke(1));
+            if (droneImage != null) {
+                g.drawImage(droneImage, px - 16, py - 16, 32, 32, null);
                 g.setColor(markerColor);
-                g.setFont(new Font("SansSerif", Font.BOLD, 9));
-                g.drawString("D" + droneId, cx - 5, cy - 10);
+                g.drawOval(px - 18, py - 18, 36, 36);
+                g.setColor(Color.BLACK);
+                g.drawString("D" + droneId, px + 18, py - 10);
             } else {
-                g2.fillRect(cx - 6, cy - 6, 12, 12);
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("SansSerif", Font.BOLD, 9));
-                g.drawString("D" + droneId, cx - 5, cy + 4);
+                g.setColor(markerColor);
+                g.fillOval(px - 8, py - 8, 16, 16);
+                g.setColor(Color.BLACK);
+                g.drawOval(px - 8, py - 8, 16, 16);
+                g.drawString("D" + droneId, px + 10, py - 10);
             }
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         }
     }
 
@@ -189,10 +213,14 @@ public class MapPanel extends JPanel {
     private static Color getSeverityColor(FireEvent.Severity severity) {
         if (severity == null) return COLOR_MODERATE;
         switch (severity) {
-            case LOW: return COLOR_LOW;
-            case MODERATE: return COLOR_MODERATE;
-            case HIGH: return COLOR_HIGH;
-            default: return COLOR_MODERATE;
+            case LOW:
+                return COLOR_LOW;
+            case MODERATE:
+                return COLOR_MODERATE;
+            case HIGH:
+                return COLOR_HIGH;
+            default:
+                return COLOR_MODERATE;
         }
     }
 
@@ -201,17 +229,20 @@ public class MapPanel extends JPanel {
     }
 
     private static Color getFaultColor(FaultType fault, DroneState state) {
-        if (state == DroneState.OFFLINE) return COLOR_OFFLINE;
+        if (state == DroneState.OFFLINE || state == DroneState.SHUTDOWN) return COLOR_OFFLINE;
         switch (fault) {
-            case DRONE_STUCK: return COLOR_FAULT_STUCK;
-            case NOZZLE_STUCK: return COLOR_FAULT_NOZZLE;
-            case SENSOR_FAIL: return COLOR_FAULT_SENSOR;
-            default: return COLOR_OFFLINE;
+            case DRONE_STUCK:
+                return COLOR_FAULT_STUCK;
+            case NOZZLE_STUCK:
+                return COLOR_FAULT_NOZZLE;
+            case SENSOR_FAIL:
+                return COLOR_FAULT_SENSOR;
+            default:
+                return COLOR_OFFLINE;
         }
     }
 
-    // Call this from a Swing timer to keep GUI refreshed
     public void startAutoRepaint() {
-        new Timer(200, e -> repaint()).start();
+        new Timer(100, e -> repaint()).start();
     }
 }

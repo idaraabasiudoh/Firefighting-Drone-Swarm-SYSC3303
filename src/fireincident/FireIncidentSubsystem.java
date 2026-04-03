@@ -29,7 +29,7 @@ public class FireIncidentSubsystem implements Runnable {
         try {
             sendSocket = new DatagramSocket();
             receiveSocket = new DatagramSocket(UDPHelper.SCHEDULER_TO_FIRE_PORT);
-            receiveSocket.setSoTimeout(30000); // 30s timeout for confirmations (drones may need to refill)
+            receiveSocket.setSoTimeout(30000);
 
             readAndProcessInputFile();
             waitForConfirmations();
@@ -44,15 +44,16 @@ public class FireIncidentSubsystem implements Runnable {
 
     private void readAndProcessInputFile() throws IOException {
         List<FireEvent> events = new ArrayList<>();
+
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath))) {
             String line;
             while ((line = reader.readLine()) != null && running) {
-                if (line.trim().isEmpty() || line.startsWith("#") || line.toLowerCase().contains("time")) continue;
+                if (line.trim().isEmpty() || line.startsWith("#") || line.toLowerCase().contains("time")) {
+                    continue;
+                }
 
                 FireEvent event = parseLineToFireEvent(line);
-                if (event != null) {
-                    events.add(event);
-                }
+                events.add(event);
             }
         }
 
@@ -60,11 +61,16 @@ public class FireIncidentSubsystem implements Runnable {
 
         for (FireEvent event : events) {
             if (!running) break;
+
             String msg = UDPHelper.buildFireEventMessage(event);
             UDPHelper.sendMessage(sendSocket, schedulerAddress, UDPHelper.FIRE_TO_SCHEDULER_PORT, msg);
             System.out.println("[Fire Subsystem] Sent to Scheduler: " + event);
 
-            try { Thread.sleep(200); } catch (InterruptedException e) { break; }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                break;
+            }
         }
     }
 
@@ -96,18 +102,23 @@ public class FireIncidentSubsystem implements Runnable {
 
     public static FireEvent parseLineToFireEvent(String line) {
         String[] p = line.split(",");
-        FireEvent event = new FireEvent(p[0].trim(), Integer.parseInt(p[1].trim()),
+
+        FireEvent event = new FireEvent(
+                p[0].trim(),
+                Integer.parseInt(p[1].trim()),
                 FireEvent.EventType.valueOf(p[2].trim().toUpperCase()),
-                FireEvent.Severity.valueOf(p[3].trim().toUpperCase()));
-        // Iteration 4: parse optional fault column
+                FireEvent.Severity.valueOf(p[3].trim().toUpperCase())
+        );
+
         if (p.length > 4) {
             event.setFaultType(FaultType.fromString(p[4].trim()));
         }
+
         return event;
     }
 
     public void shutdown() {
-        this.running = false;
+        running = false;
         if (receiveSocket != null && !receiveSocket.isClosed()) receiveSocket.close();
     }
 }

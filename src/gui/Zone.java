@@ -1,3 +1,5 @@
+package gui;
+
 public class Zone {
     private final int id;
     private final int x1, y1, x2, y2;

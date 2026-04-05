@@ -1,3 +1,7 @@
+package fireincident;
+
+import drone.FaultType;
+
 import java.util.Objects;
 
 public class FireEvent {

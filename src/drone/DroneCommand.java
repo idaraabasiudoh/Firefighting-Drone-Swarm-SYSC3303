@@ -1,3 +1,7 @@
+package drone;
+
+import fireincident.FireEvent;
+
 // DroneCommand.java  (NEW)
 // Scheduler sends commands to the drone (either a task, return to base, or shutdown)
 public record DroneCommand(Type type, FireEvent task) {

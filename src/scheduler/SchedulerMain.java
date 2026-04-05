@@ -1,3 +1,10 @@
+package scheduler;
+
+import gui.MapPanel;
+import gui.Zone;
+import gui.ZoneParser;
+import network.UDPHelper;
+
 import javax.swing.*;
 import java.io.File;
 import java.util.List;

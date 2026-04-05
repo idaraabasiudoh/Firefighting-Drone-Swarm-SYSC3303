@@ -1,3 +1,5 @@
+package drone;
+
 /**
  * Tracks per-drone state in the Scheduler's drone registry.
  * Used for multi-drone scheduling and load balancing.

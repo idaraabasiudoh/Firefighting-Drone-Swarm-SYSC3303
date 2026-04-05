@@ -1,3 +1,5 @@
+package drone;
+
 /**
  * Enumeration of fault types that can be injected into the system.
  * Faults are specified in the fire_events.csv input file.

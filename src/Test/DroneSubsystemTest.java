@@ -1,3 +1,10 @@
+package test;
+
+import drone.*;
+import fireincident.FireEvent;
+import fireincident.FireIncidentSubsystem;
+import network.UDPHelper;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

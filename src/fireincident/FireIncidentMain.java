@@ -1,3 +1,5 @@
+package fireincident;
+
 import java.io.File;
 import java.net.InetAddress;
 

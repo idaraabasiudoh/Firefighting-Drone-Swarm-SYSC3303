@@ -1,0 +1,51 @@
+@startuml Iteration4_TimingDiagram
+
+title Iteration 4 - Timing Diagram: Fault Detection & Handling
+
+scale 1 as 50 pixels
+
+concise "Drone 1" as D1
+concise "Drone 2" as D2
+
+@0
+D1 is IDLE
+D2 is IDLE
+
+@1
+D1 is EN_ROUTE
+D2 is EN_ROUTE
+
+@3
+D1 is DROPPING
+
+@4
+D2 is FAULT_STUCK
+
+@5=
+D1 is IDLE
+
+@6
+D1 is EN_ROUTE
+D2 is RETURNING
+
+@8
+D1 is DROPPING
+D2 is IDLE
+
+@9
+D1 is FAULT_NOZZLE
+
+@10
+D1 is OFFLINE
+D2 is EN_ROUTE
+
+@12
+D2 is DROPPING
+
+@13
+D2 is IDLE
+
+highlight 4 to 6 #FFECB3;line:FFA000 : Soft Fault
+highlight 9 to 13 #FFCDD2;line:D32F2F : Hard Fault
+
+@enduml

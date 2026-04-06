@@ -169,4 +169,88 @@ public class DroneSubsystemTest {
                 FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.HIGH);
         assertEquals(FaultType.NONE, event.getFaultType());
     }
+
+    // ==================== Iteration 5: Agent Capacity Enforcement ====================
+
+    @Test
+    void testDroneCustomCapacity() throws Exception {
+        InetAddress localhost = InetAddress.getByName("localhost");
+        DroneSubsystem drone = new DroneSubsystem(1, localhost, 50.0);
+
+        assertEquals(50.0, drone.getCurrentAgent());
+    }
+
+    @Test
+    void testDroneCapacityCoversHighSeverity() throws Exception {
+        InetAddress localhost = InetAddress.getByName("localhost");
+        DroneSubsystem drone = new DroneSubsystem(1, localhost, 30.0);
+
+        assertTrue(drone.getCurrentAgent() >= DroneSubsystem.litersForSeverity("HIGH"));
+    }
+
+    @Test
+    void testDroneCapacityCoversLowSeverity() throws Exception {
+        InetAddress localhost = InetAddress.getByName("localhost");
+        DroneSubsystem drone = new DroneSubsystem(1, localhost, 10.0);
+
+        assertTrue(drone.getCurrentAgent() >= DroneSubsystem.litersForSeverity("LOW"));
+    }
+
+    @Test
+    void testDroneShutdown() throws Exception {
+        InetAddress localhost = InetAddress.getByName("localhost");
+        DroneSubsystem drone = new DroneSubsystem(1, localhost, 30.0);
+
+        drone.shutdown();
+        // After shutdown, state should still be accessible
+        assertNotNull(drone.getState());
+    }
+
+    @Test
+    void testDroneGetDroneId() throws Exception {
+        InetAddress localhost = InetAddress.getByName("localhost");
+        DroneSubsystem drone1 = new DroneSubsystem(1, localhost);
+        DroneSubsystem drone2 = new DroneSubsystem(2, localhost);
+        DroneSubsystem drone3 = new DroneSubsystem(3, localhost);
+
+        assertEquals(1, drone1.getDroneId());
+        assertEquals(2, drone2.getDroneId());
+        assertEquals(3, drone3.getDroneId());
+    }
+
+    @Test
+    void testLitersForSeverityBoundary() {
+        // LOW needs exactly 10, MODERATE exactly 20, HIGH exactly 30
+        assertEquals(10, DroneSubsystem.litersForSeverity("LOW"));
+        assertEquals(20, DroneSubsystem.litersForSeverity("MODERATE"));
+        assertEquals(30, DroneSubsystem.litersForSeverity("HIGH"));
+    }
+
+    @Test
+    void testDroneResultIncompleteTask() {
+        DroneResult result = new DroneResult(1, 3, false, 0.0);
+
+        assertFalse(result.isTaskCompleted());
+        assertEquals(0.0, result.getRemainingAgent());
+    }
+
+    @Test
+    void testDroneCommandRedirect() {
+        FireEvent event = new FireEvent("14:00:00", 5,
+                FireEvent.EventType.FIRE_DETECTED, FireEvent.Severity.MODERATE);
+
+        DroneCommand taskCmd = DroneCommand.task(event);
+        assertEquals(DroneCommand.Type.TASK, taskCmd.type());
+        assertEquals(5, taskCmd.task().getZoneId());
+    }
+
+    @Test
+    void testDroneStateTransitions() {
+        // Verify all expected fault states exist
+        assertNotNull(DroneState.valueOf("FAULT_STUCK"));
+        assertNotNull(DroneState.valueOf("FAULT_NOZZLE"));
+        assertNotNull(DroneState.valueOf("FAULT_SENSOR"));
+        assertNotNull(DroneState.valueOf("OFFLINE"));
+        assertNotNull(DroneState.valueOf("SHUTDOWN"));
+    }
 }

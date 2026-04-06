@@ -1,0 +1,56 @@
+@startuml Iteration5_Drone_State_Machine
+title Drone Subsystem State Machine - Iteration 5
+skinparam state {
+    BackgroundColor<<fault>> #FFCCCC
+    BackgroundColor<<offline>> #CCCCCC
+}
+
+[*] --> IDLE : Drone starts\nand registers
+
+IDLE --> EN_ROUTE : Scheduler dispatches\nDRONE_COMMAND (TASK)
+IDLE --> SHUTDOWN : DRONE_COMMAND\n(SHUTDOWN)
+IDLE --> RETURNING_BASE : currentAgent < litersNeeded\n(pre-task refill)
+
+EN_ROUTE --> DROPPING_AGENT : Arrived at zone\n(no fault)
+EN_ROUTE --> FAULT_STUCK <<fault>> : DRONE_STUCK injected\n(drone freezes mid-flight)
+EN_ROUTE --> FAULT_SENSOR <<fault>> : SENSOR_FAIL injected\n(arrival sensor fails)
+
+DROPPING_AGENT --> IDLE : Drop complete\n(agent sufficient, send DRONE_RESULT)
+DROPPING_AGENT --> RETURNING_BASE : Drop complete\n(remainingAgent < 10L)
+DROPPING_AGENT --> FAULT_NOZZLE <<fault>> : NOZZLE_STUCK injected\n(nozzle jams during drop)
+
+RETURNING_BASE --> IDLE : Arrived at base (0,0)\ncurrentAgent = agentCapacity\n(refill complete)
+
+FAULT_STUCK --> RETURNING_BASE : Self-recover after 3s\n(soft fault reset)
+FAULT_SENSOR --> RETURNING_BASE : Self-recover after 3s\n(soft fault reset)
+FAULT_NOZZLE --> OFFLINE <<offline>> : Hard fault\n(permanent shutdown)
+
+OFFLINE --> [*] : Drone permanently\ntaken offline
+
+SHUTDOWN --> [*] : Drone process\nterminates
+
+note right of FAULT_STUCK
+  **Soft Fault**
+  Drone stuck mid-flight.
+  Scheduler re-queues zone.
+  Drone self-recovers after 3s.
+end note
+
+note right of FAULT_NOZZLE
+  **Hard Fault**
+  Nozzle jams during drop.
+  Drone goes permanently OFFLINE.
+  Scheduler re-queues zone.
+end note
+
+note right of RETURNING_BASE
+  **Refill Station**
+  Drone returns to base (0,0).
+  Agent refilled to full capacity.
+  Triggered by:
+  - Pre-task capacity check
+  - Post-task low agent (<10L)
+  - Soft fault recovery
+end note
+
+@enduml

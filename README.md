@@ -288,3 +288,65 @@ Same as Iteration 3. The `fire_events.csv` now includes a 5th column for fault i
 - Scheduler Fault Detection & Timer: **Ohioreuna Ajayi-Isuku**
 - Testing: **Divine Eyo & Suveatha Karunakaran**
 - Diagrams, Documentation & Read-Me: **Idara-Abasi Udoh & Divine Eyo**
+
+## Iteration 5
+
+**Objective:** Add **agent capacity enforcement** with refill station logic, **enhanced GUI** (drone position, fire intensity, fault visualization), and **comprehensive test coverage** (~130 tests across 8 test files). Drones now track remaining agent and automatically return to base for refill when capacity is insufficient. The Scheduler enforces capacity-aware drone selection and sends RETURN_BASE commands when agent drops below threshold.
+
+### 1.0 Key Changes from Iteration 4
+- **Agent capacity enforcement**: `DroneSubsystem` tracks `currentAgent` and `agentCapacity`. Before starting a task, if `currentAgent < litersNeeded`, the drone auto-returns to base for a refill.
+- **Refill station**: `doReturnToBase()` moves the drone to (0,0), resets `currentAgent = agentCapacity`, and transitions to IDLE.
+- **Scheduler capacity-aware dispatch**: `findBestDrone()` now calls `drone.hasEnoughAgent(litersNeeded)` to skip drones with insufficient agent.
+- **Post-task low-agent detection**: `handleDroneResult()` checks if `remainingAgent < 10` and sends `RETURN_BASE` if needed.
+- **DroneInfo refill tracking**: Added `agentCapacity`, `remainingAgent`, `refill()`, `hasEnoughAgent()`, and `isAvailable()` (checks IDLE && !offline).
+- **GUI enhancements**: `GuiModel` now tracks drone positions (`dronePositions`), fire intensity (`fireIntensity`), and fault types. `MapPanel` renders drone markers at actual positions, severity-colored fires with intensity scaling, and fault-colored labels.
+- **Comprehensive test suite**: 8 test files with ~130 test methods covering all subsystems, data classes, enums, GUI model, scheduling logic, UDP protocol, and CSV parsing.
+
+### 2.0 New/Modified Files
+#### 2.1 New Files
+- **DroneInfoTest.java:** 24 tests for DroneInfo construction, availability, capacity, refill, fault tracking, and lifecycle.
+- **GuiModelTest.java:** 23 tests for singleton, drone states/positions/faults, active fires, fire intensity, snapshot immutability.
+- **SchedulerTest.java:** 10 tests for findBestDrone (capacity-aware selection, load balancing, skip busy/offline/insufficient).
+- **UDPHelperTest.java:** 30 tests for all message build/parse methods, round-trips, port constants, timestamp.
+- **ZoneTest.java:** 8 tests for Zone geometry and center calculation.
+- **FireIncidentSubsystemTest.java:** 11 tests for CSV line parsing with all fault types and severity levels.
+
+#### 2.2 Modified Files
+- **DroneSubsystem.java:** Agent capacity tracking (`agentCapacity`, `currentAgent`), pre-task capacity check, `doReturnToBase()` with refill.
+- **DroneInfo.java:** Added `agentCapacity`, `remainingAgent`, `refill()`, `hasEnoughAgent()`, `isAvailable()`.
+- **Scheduler.java:** `findBestDrone()` capacity check, `handleDroneResult()` low-agent detection, `sendReturnBase()`.
+- **GuiModel.java:** Added `dronePositions`, `fireIntensity` maps with getters/setters/snapshots.
+- **MapPanel.java:** Drone position rendering, fire intensity scaling, fault color markers.
+- **DroneSubsystemTest.java:** Added 9 tests for capacity enforcement, shutdown, boundary cases.
+- **FireEventTest.java:** Added 15 tests for constructors, setters, equals edge cases, hashCode, toString, enums.
+
+#### 2.3 Diagrams (Diagrams/Iteration5/)
+- **class_diagram.puml:** Complete UML class diagram with all Iteration 5 classes, fields, methods, and relationships.
+- **state_diagram.puml:** Drone state machine showing all 9 states including fault transitions and refill paths.
+- **sequence_diagram.puml:** End-to-end sequence showing normal dispatch, refill, soft/hard faults, re-dispatch, and shutdown.
+
+### 3.0 Updated Input File Format
+`fire_events.csv` format (unchanged from Iteration 4):
+```
+time,zoneId,eventType,severity[,faultType]
+```
+- **faultType** (optional): NONE, DRONE_STUCK, NOZZLE_STUCK, SENSOR_FAIL
+
+### 4.0 Set-Up Instructions
+Same as Iteration 3/4. See `README_Iteration5.txt` for detailed step-by-step instructions including:
+- IntelliJ project setup (Sources Root, Test Sources Root, JUnit 5)
+- All-in-one launcher (`Main.java`)
+- Three separate processes (`SchedulerMain`, `DroneMain`, `FireIncidentMain`)
+- Command-line compilation and execution
+
+### 5.0 Test Instructions
+Run all 8 test files in `src/Test/`:
+- **IntelliJ:** Right-click `Test/` directory → Run 'All Tests'
+- **Total:** ~130 test methods across 8 files
+- See `README_Iteration5.txt` Section 5.0 for detailed test coverage summary.
+
+### 6.0 Responsibilities
+- Agent Capacity & Refill Logic: **Idara-Abasi Udoh**
+- Scheduler Capacity Enforcement: **Ohioreuna Ajayi-Isuku**
+- Testing (8 test files, ~130 tests): **Divine Eyo & Suveatha Karunakaran**
+- Diagrams, Documentation & Read-Me: **Idara-Abasi Udoh & Divine Eyo**

@@ -102,11 +102,23 @@ public class UDPHelper {
     }
 
     public static String buildDroneCommandMessage(int droneId, String commandType, int zoneId, String severity) {
-        return buildDroneCommandMessage(droneId, commandType, zoneId, severity, "NONE");
+        return buildDroneCommandMessage(droneId, commandType, zoneId, severity, "NONE", 0, 0);
     }
 
     public static String buildDroneCommandMessage(int droneId, String commandType, int zoneId, String severity, String faultType) {
-        return MSG_DRONE_COMMAND + "|" + droneId + "|" + commandType + "|" + zoneId + "|" + severity + "|" + faultType;
+        return buildDroneCommandMessage(droneId, commandType, zoneId, severity, faultType, 0, 0);
+    }
+
+    /**
+     * Full command message including target coordinates so the drone knows exactly
+     * where to fly to (the zone center), eliminating hardcoded lookup tables.
+     * Format: DRONE_COMMAND|droneId|cmdType|zoneId|severity|faultType|targetX|targetY
+     */
+    public static String buildDroneCommandMessage(int droneId, String commandType, int zoneId,
+                                                  String severity, String faultType,
+                                                  int targetX, int targetY) {
+        return MSG_DRONE_COMMAND + "|" + droneId + "|" + commandType + "|" + zoneId
+                + "|" + severity + "|" + faultType + "|" + targetX + "|" + targetY;
     }
 
     public static String parseDroneCommandType(String msg) {
@@ -124,6 +136,16 @@ public class UDPHelper {
     public static String parseDroneCommandFault(String msg) {
         String[] p = msg.split("\\|");
         return p.length > 5 ? p[5] : "NONE";
+    }
+
+    public static int parseDroneCommandTargetX(String msg) {
+        String[] p = msg.split("\\|");
+        return p.length > 6 ? Integer.parseInt(p[6]) : 0;
+    }
+
+    public static int parseDroneCommandTargetY(String msg) {
+        String[] p = msg.split("\\|");
+        return p.length > 7 ? Integer.parseInt(p[7]) : 0;
     }
 
     public static String buildDroneStatusMessage(int droneId, String state, int x, int y, double remainingAgent) {

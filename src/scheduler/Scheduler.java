@@ -297,19 +297,27 @@ public class Scheduler implements Runnable {
         drone.setDispatchTimestamp(System.currentTimeMillis());
         String faultStr = event.getFaultType() != null ? event.getFaultType().name() : "NONE";
 
+        // Include zone center so drone knows exactly where to fly
+        Zone targetZone = findZone(event.getZoneId());
+        int targetX = (targetZone != null) ? targetZone.centerX() : 0;
+        int targetY = (targetZone != null) ? targetZone.centerY() : 0;
+
         String cmdMsg = UDPHelper.buildDroneCommandMessage(
                 droneId,
                 "TASK",
                 event.getZoneId(),
                 event.getSeverity().name(),
-                faultStr
+                faultStr,
+                targetX,
+                targetY
         );
 
         try {
             InetAddress droneAddr = droneAddresses.get(droneId);
             if (droneAddr != null) {
                 UDPHelper.sendMessage(sendSocket, droneAddr, drone.getListenPort(), cmdMsg);
-                log("Dispatched Drone " + droneId + " to Zone " + event.getZoneId());
+                log("Dispatched Drone " + droneId + " to Zone " + event.getZoneId()
+                        + " target=(" + targetX + "," + targetY + ")");
             }
         } catch (IOException e) {
             System.err.println("[Scheduler] Failed to send command to Drone " + droneId + ": " + e.getMessage());
@@ -366,7 +374,10 @@ public class Scheduler implements Runnable {
                             drone.getDroneId(),
                             "REDIRECT",
                             newEvent.getZoneId(),
-                            newEvent.getSeverity().name()
+                            newEvent.getSeverity().name(),
+                            "NONE",
+                            newZone.centerX(),
+                            newZone.centerY()
                     );
 
                     try {

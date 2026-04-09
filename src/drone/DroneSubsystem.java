@@ -140,11 +140,13 @@ public class DroneSubsystem implements Runnable {
         String severity = UDPHelper.parseDroneCommandSeverity(msg);
         FaultType fault = FaultType.fromString(UDPHelper.parseDroneCommandFault(msg));
 
-        int litersNeeded = litersForSeverity(severity);
+        // Read target coords from message (set by Scheduler from zone CSV)
+        int msgTargetX = UDPHelper.parseDroneCommandTargetX(msg);
+        int msgTargetY = UDPHelper.parseDroneCommandTargetY(msg);
+        targetX = msgTargetX;
+        targetY = msgTargetY;
 
-        ZoneTarget zoneTarget = zoneTargetFor(zoneId);
-        targetX = zoneTarget.x;
-        targetY = zoneTarget.y;
+        int litersNeeded = litersForSeverity(severity);
 
         if (currentAgent < litersNeeded) {
             doReturnToBase();
@@ -156,7 +158,8 @@ public class DroneSubsystem implements Runnable {
 
             setState(DroneState.EN_ROUTE);
             sendStatusToScheduler();
-            log("EN_ROUTE to Zone " + zoneId + (fault != FaultType.NONE ? " [FAULT INJECTED: " + fault + "]" : ""));
+            log("EN_ROUTE to Zone " + zoneId + " at (" + targetX + "," + targetY + ")"
+                    + (fault != FaultType.NONE ? " [FAULT INJECTED: " + fault + "]" : ""));
 
             if (fault == FaultType.DRONE_STUCK) {
                 moveTowardsTarget(travelTimeMs() / 2);
@@ -188,9 +191,7 @@ public class DroneSubsystem implements Runnable {
                 zoneId = redirectZoneId;
                 severity = redirectSeverity;
                 litersNeeded = litersForSeverity(severity);
-                ZoneTarget redirected = zoneTargetFor(zoneId);
-                targetX = redirected.x;
-                targetY = redirected.y;
+                // redirectTargetX/Y were set by handleRedirect
                 moveTowardsTarget(travelTimeMs());
                 redirectZoneId = -1;
                 redirectSeverity = null;
@@ -302,7 +303,10 @@ public class DroneSubsystem implements Runnable {
         if (state == DroneState.EN_ROUTE) {
             redirectZoneId = UDPHelper.parseDroneCommandZoneId(msg);
             redirectSeverity = UDPHelper.parseDroneCommandSeverity(msg);
-            log("Redirect received: Zone " + redirectZoneId);
+            // Update the target so moveTowardsTarget heads to the right place
+            targetX = UDPHelper.parseDroneCommandTargetX(msg);
+            targetY = UDPHelper.parseDroneCommandTargetY(msg);
+            log("Redirect received: Zone " + redirectZoneId + " at (" + targetX + "," + targetY + ")");
         }
     }
 
@@ -358,37 +362,6 @@ public class DroneSubsystem implements Runnable {
                 return 30;
             default:
                 return 0;
-        }
-    }
-
-    private ZoneTarget zoneTargetFor(int zoneId) {
-        switch (zoneId) {
-            case 1:
-                return new ZoneTarget(350, 300);
-            case 2:
-                return new ZoneTarget(325, 1050);
-            case 3:
-                return new ZoneTarget(1000, 300);
-            case 4:
-                return new ZoneTarget(1000, 1050);
-            case 5:
-                return new ZoneTarget(1650, 300);
-            case 6:
-                return new ZoneTarget(1650, 1050);
-            case 7:
-                return new ZoneTarget(350, 1800);
-            default:
-                return new ZoneTarget(0, 0);
-        }
-    }
-
-    private static class ZoneTarget {
-        final int x;
-        final int y;
-
-        ZoneTarget(int x, int y) {
-            this.x = x;
-            this.y = y;
         }
     }
 

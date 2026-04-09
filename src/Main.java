@@ -28,11 +28,17 @@ public class Main {
 
             final List<Zone> guiZones = zones;
             SwingUtilities.invokeLater(() -> {
+                try {
+                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                } catch (Exception ignored) {}
+
                 JFrame frame = new JFrame("Firefighting Drone Swarm");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.setBackground(new java.awt.Color(10, 14, 26));
                 MapPanel panel = new MapPanel(guiZones);
                 frame.setContentPane(panel);
                 frame.pack();
+                frame.setMinimumSize(new java.awt.Dimension(900, 600));
                 frame.setLocationRelativeTo(null);
                 frame.setVisible(true);
                 panel.startAutoRepaint();
